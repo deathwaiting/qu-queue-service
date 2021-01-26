@@ -1,0 +1,36 @@
+- Why quarkus ?
+    -- this system design assumes variable events will be executed when customer will be enqueued and picked up.
+        --- for example a pickup can send emails to next client in queue, or update a screen in office.
+    -- the variable events work with an event driven system, which can be provided by vert.x event bus architecture
+    -- quarkus is built upon vert.x , providing the ability to use its event bus, and much more other features for
+    web development using its eco-system of extensions.
+    -- quarkus has very good performance
+        --- supports vert.x event-loop model
+        --- supports reactive paradigms
+        --- supports reactive database access.
+        --- supports native builds on graalvm, which can darsitically reduce startup time and memory footprint
+        --- container and cloud native and its native builds can be uses with serverless services.
+- Why postgres ?
+    -- mature database
+    -- i am used to it
+    -- it should support my needs, has native support for JSON types and indexing , and many other features
+    -- it has reactive clients that are supported by quarkus
+    -- its performance was very good compared to mongodb
+    -- it has connection pooling solution like pgBouncer that can make thousand of connections available.
+- Why hibernate-reactive with panache?
+    -- i was considering several solutions, but the most requirement was having reactive db client support:
+        --- quarkus supports vert.x postgres reactive client, but it was very low level with ton of boiler plate
+        --- quarkus supports vanilla hibernate and JPA , but it is not reactive and will use jdbc which is blocking
+        --- thought of using jooq + vert.x postgres client using this but was not sure about its integration with quarkus
+            specially the native build, which requires no use of reflection:
+            https://github.com/jklingsporn/vertx-jooq
+        --- considered using a quarkus extension that integrates jooq, but it used the agroal pool which is a jdbc
+            connection pool
+        -- i was considering using quarkus + spring reactive client + r2dbc
+           --- the r2dbc client does bean mapping and some other goodies when writing sql, similar to JDBI library.
+           --- it was tested in earlier project and worked
+           --- but native build was not guaranteed , as it probably uses reflection.
+        --- then i noticed that the latest version supported reactive-hibernate + panache which was the best solution
+            at time. reactive-hibernate natively uses reactive clients for postgres, but had some boiler plate.
+            ---- but as being integrated with quarkus, i am now more confident that i will have less problems with
+                 builds, also the panache supports should make boiler plate much less.
