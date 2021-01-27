@@ -13,9 +13,6 @@ import static javax.persistence.FetchType.LAZY;
 @Table(name= "queue_request")
 public class QueueRequest extends PanacheEntity {
 
-    @Id @GeneratedValue
-    public Long id;
-
     @Column(name = "acceptor_id")
     public String acceptorId;
 
@@ -33,7 +30,7 @@ public class QueueRequest extends PanacheEntity {
     public String clientDetails;
 
     @Column(name = "refused")
-    public boolean refused;
+    public Boolean refused;
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "queue_id")

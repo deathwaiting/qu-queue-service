@@ -23,8 +23,11 @@ dependencies {
     implementation("io.quarkus:quarkus-reactive-pg-client")
     implementation("io.quarkus:quarkus-smallrye-metrics")
     implementation("io.quarkus:quarkus-arc")
+    testImplementation("io.quarkus:quarkus-jdbc-postgresql")
+    implementation("io.quarkus:quarkus-reactive-pg-client")
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")
+    testImplementation("org.testcontainers:postgresql:1.15.1")
 }
 
 group = "com.qu"

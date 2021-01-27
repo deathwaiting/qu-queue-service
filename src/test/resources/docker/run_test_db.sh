@@ -1,0 +1,1 @@
+sudo podman run --env POSTGRES_USER=postgres --env POSTGRES_PASSWORD=postgres -p 5423:5423 postgres

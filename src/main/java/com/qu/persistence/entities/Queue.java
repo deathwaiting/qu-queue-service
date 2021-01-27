@@ -12,9 +12,6 @@ import static javax.persistence.FetchType.LAZY;
 @Entity
 @Table(name = "queue")
 public class Queue extends PanacheEntity {
-    @Id @GeneratedValue
-    public Long id;
-
     @Column(name = "name")
     public String name;
 
@@ -34,11 +31,17 @@ public class Queue extends PanacheEntity {
     public Long organizationId;
 
     @Column(name = "auto_accept_enabled")
-    public boolean autoAcceptEnabled;
+    public Boolean autoAcceptEnabled;
 
+
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "queue_type_id")
+    public QueueType type;
 
     @OneToMany(mappedBy = "queue", fetch = LAZY, cascade = ALL)
     public Set<QueueRequest> requests;
 
 
+    @OneToMany(mappedBy = "queue", fetch = LAZY)
+    public Set<QueueAction> actions;
 }
