@@ -24,10 +24,17 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-metrics")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-reactive-pg-client")
+
+    compileOnly("org.projectlombok:lombok:1.18.16")
+    annotationProcessor("org.projectlombok:lombok:1.18.16")
+    implementation("org.mapstruct:mapstruct:1.4.1.Final")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.4.1.Final")
+
     testImplementation("io.quarkus:quarkus-jdbc-postgresql")
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("org.testcontainers:postgresql:1.15.1")
+    testImplementation("org.jdbi:jdbi3-core:3.1.0")
 }
 
 group = "com.qu"

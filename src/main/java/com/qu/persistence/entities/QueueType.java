@@ -1,18 +1,23 @@
 package com.qu.persistence.entities;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.util.Set;
 
 import static javax.persistence.CascadeType.ALL;
+import static javax.persistence.GenerationType.AUTO;
+import static javax.persistence.GenerationType.IDENTITY;
 
 @Entity
 @Table(name = "queue_type")
-public class QueueType extends PanacheEntity {
+public class QueueType extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = IDENTITY)
+    private Long id;
+
     @Column(name = "name")
     public String name;
 

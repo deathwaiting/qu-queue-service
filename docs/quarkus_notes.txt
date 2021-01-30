@@ -1,0 +1,9 @@
+- as for quarkus 11, i couldn't run liquibase along hibernate-reactive, as hibernate reactive cannot work with jdbc
+properties provided , and liquibase uses jdbc properties to get the database connection.
+- it seems all classes with public properties are processed by quarkus to create properties for them at compile time,
+need to test more , put this is not just done to panache entities.
+- cannot use panache entities, an probably even hibernate-reactive session in tests, i get his error
+"java.lang.AssertionError: This needs to be run on the Vert.x event loop"
+    -- seems they made a specific implementation of the session for quarkus, and it can't be used without vert.x io
+    event loop
+    -- this means i can't use it in my tests to check the changes in the database.

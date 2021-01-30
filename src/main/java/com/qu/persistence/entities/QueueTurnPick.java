@@ -1,15 +1,23 @@
 package com.qu.persistence.entities;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 
 import javax.persistence.*;
 import java.time.ZonedDateTime;
 
 import static javax.persistence.FetchType.LAZY;
+import static javax.persistence.GenerationType.AUTO;
+import static javax.persistence.GenerationType.IDENTITY;
 
 @Entity
 @Table(name = "queue_turn_pick")
-public class QueueTurnPick extends PanacheEntity {
+public class QueueTurnPick extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = IDENTITY)
+    private Long id;
+
     @Column(name = "pick_time")
     public ZonedDateTime pickTime;
 

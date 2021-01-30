@@ -1,11 +1,20 @@
 --liquibase fromatted sql
 --changeset ahmed:20210127-1 splitStatement:true endDelimiter:;
+create table organization(
+    id bigserial primary key,
+    owner_id text not null,
+    owner_data text not null,
+    subscription_type varchar(50),
+    name varchar(200)
+);
+
+
 create table queue_type(
     id bigserial primary key,
     default_max_size integer,
     default_hold_enabled boolean,
     default_auto_accept_enabled boolean,
-    organization_id bigint not null
+    organization_id bigint not null references organization(id)
 );
 
 
