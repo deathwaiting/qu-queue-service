@@ -17,16 +17,19 @@ dependencies {
     implementation("io.quarkus:quarkus-resteasy-reactive-jackson")
     implementation("io.quarkus:quarkus-hibernate-reactive-panache")
     implementation("io.quarkus:quarkus-smallrye-openapi")
-    implementation("io.quarkus:quarkus-smallrye-jwt")
+//    implementation("io.quarkus:quarkus-smallrye-jwt")
     implementation("io.quarkus:quarkus-liquibase")
     implementation("io.quarkus:quarkus-mailer")
     implementation("io.quarkus:quarkus-reactive-pg-client")
     implementation("io.quarkus:quarkus-smallrye-metrics")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-reactive-pg-client")
+    implementation("io.quarkus:quarkus-oidc")
 
     compileOnly("org.projectlombok:lombok:1.18.16")
+    testCompileOnly("org.projectlombok:lombok:1.18.16")
     annotationProcessor("org.projectlombok:lombok:1.18.16")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.16")
     implementation("org.mapstruct:mapstruct:1.4.1.Final")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.4.1.Final")
 
@@ -35,6 +38,7 @@ dependencies {
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("org.testcontainers:postgresql:1.15.1")
     testImplementation("org.jdbi:jdbi3-core:3.1.0")
+    testImplementation("com.tngtech.keycloakmock:mock:0.6.0");
 }
 
 group = "com.qu"

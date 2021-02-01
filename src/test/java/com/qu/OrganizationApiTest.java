@@ -1,44 +1,53 @@
 package com.qu;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.dto.AdminInvitationCreateResponse;
 import com.qu.persistence.entities.Organization;
 import com.qu.test.utils.DaoUtil;
+import com.qu.test.utils.Sql;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Blocking;
-import io.smallrye.mutiny.Uni;
-import org.apache.http.entity.ContentType;
-import org.hamcrest.CoreMatchers;
-import org.hibernate.Session;
-import org.hibernate.reactive.mutiny.Mutiny;
+import lombok.Data;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
-import javax.json.Json;
 import java.util.Map;
-import java.util.Optional;
 
+import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
+import static com.qu.test.utils.Sql.ExecutionPhase.AFTER_TEST_METHOD;
+import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
+import static com.qu.test.utils.TestUtils.readTestResourceAsString;
 import static io.restassured.RestAssured.given;
+import static javax.json.Json.createArrayBuilder;
+import static javax.json.Json.createObjectBuilder;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
+@Blocking       //we need this to run jdbi with jdbc database connection for some reason
 public class OrganizationApiTest {
 
     @Inject
     DaoUtil dao;
 
+    @Inject
+    ObjectMapper mapper;
+
+
+    static String jwt = readTestResourceAsString("keys/owner.jwt");
+
+
+
     @Test
-    @Blocking
     public void registerOrganization(){
         String email = "owner@fake.com";
         String password = "1234";
         String name = "organization";
         String paymentToken = "we_payed";
         String request =
-                Json
-                .createObjectBuilder()
+                createObjectBuilder()
                 .add("email", email)
                 .add("password", password)
                 .add("name", name)
@@ -61,4 +70,51 @@ public class OrganizationApiTest {
         assertNotNull(email, org.getOwnerId());
         assertEquals(name, org.getName());
     }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/organization_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void inviteOrganizationAdmin(){
+        var email = "admin@fake.com";
+        var roles = createArrayBuilder().add(QUEUE_ADMIN).build();
+        var request =
+                createObjectBuilder()
+                .add("email", email)
+                .add("roles", roles)
+                .build()
+                .toString();
+        var response =
+                given()
+                    .when()
+                        .body(request)
+                            .contentType(APPLICATION_JSON.toString())
+                            .auth().oauth2(jwt)
+                        .post("/organization/admin/invitation")
+                    .then()
+                        .statusCode(200)
+                        .body(notNullValue())
+                        .extract()
+                            .body().as(AdminInvitationCreateResponse.class);
+
+        var invitation = dao.getSingleRow("select * from organization_admin_invitation where id = :id", AdminInvitationRow.class, Map.of("id", response.invitationToken));
+
+        assertNotNull(invitation.getId());
+        assertEquals(4444L, invitation.getOrgId());
+        assertEquals(email, invitation.getEmail());
+        assertEquals(roles.toString(), invitation.getRoles());
+    }
+
+}
+
+
+
+
+@Data
+class AdminInvitationRow{
+    private String id;
+    private String orgId;
+    private String email;
+    private String roles;
 }

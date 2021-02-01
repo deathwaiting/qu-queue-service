@@ -1,0 +1,11 @@
+delete from queue_turn_pick;
+delete from queue_turn_insertion;
+delete from queue_leave;
+delete from queue_turn;
+delete from queue_request;
+delete from queue_actions;
+delete from queue_event_definition;
+delete from queue;
+delete from queue_type;
+delete from organization;
+delete from organization_admin_invitation;

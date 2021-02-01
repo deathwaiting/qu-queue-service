@@ -9,6 +9,14 @@ create table organization(
 );
 
 
+create table organization_admin_invitation(
+    id varchar(200) primary key,
+    organization_id bigint not null references organization(id),
+    email varchar(200) not null,
+    roles text not null
+);
+
+
 create table queue_type(
     id bigserial primary key,
     default_max_size integer,

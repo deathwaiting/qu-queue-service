@@ -1,5 +1,7 @@
 package com.qu.controller;
 
+import com.qu.dto.AdminInvitationCreateRequest;
+import com.qu.dto.AdminInvitationCreateResponse;
 import com.qu.dto.OrganizationCreateDTO;
 import com.qu.services.OrganizationService;
 import io.smallrye.mutiny.Uni;
@@ -23,6 +25,15 @@ public class OrganizationController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Uni<Long> createOrganization(OrganizationCreateDTO orgDto){
         return orgService.createOrganization(orgDto);
+    }
+
+
+    @POST
+    @Path("/admin/invitation")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Uni<AdminInvitationCreateResponse> inviteAdmin(AdminInvitationCreateRequest invitation){
+        return orgService.inviteOrganizationAdmin(invitation);
     }
 
 }

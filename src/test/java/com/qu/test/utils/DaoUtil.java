@@ -70,4 +70,26 @@ public class DaoUtil {
 
     }
 
+
+
+    public <T> T getFirstRow(String sql, Class<? extends T> resultType,  Map<String,?> params){
+        return jdbi
+                .withHandle( h ->
+                        h.createQuery(sql)
+                                .bindMap(params)
+                                .mapToBean(resultType)
+                                .stream()
+                                .findFirst()
+                                .orElse(null));
+
+    }
+
+
+
+    public void execute(String sql){
+        jdbi
+        .withHandle( h ->
+                h.execute(sql));
+    }
+
 }

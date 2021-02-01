@@ -1,0 +1,18 @@
+//https://dinochiesa.github.io/jwt/
+{
+  "iss": "DinoChiesa.github.io",
+  "sub": "ming",
+  "aud": "anna",
+  "iat": 1612110856,
+  "exp": 1612111456,
+  "alpha": [
+    "6kpheyn74hvc8swiyndcs",
+    false
+  ],
+  "name": "fakeman",
+  "email": "owner@fake.com",
+  "groups": [
+    "ROLE_USER_MANAGER"
+  ],
+  "organizationId": 8888
+}

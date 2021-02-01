@@ -11,6 +11,7 @@ public class UserDto {
     public String email;
     public String phone;
     public String name;
+    public String organizationId;
     public List<String> roles;
     public Map<String,String> extraDetails;
 }

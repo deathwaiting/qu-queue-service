@@ -1,19 +1,19 @@
 package com.qu.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qu.dto.OrganizationCreateDTO;
-import com.qu.dto.UserCreationDto;
-import com.qu.dto.UserDto;
+import com.qu.dto.*;
 import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.persistence.entities.Organization;
+import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
@@ -27,13 +27,31 @@ public class OrganizationServiceImpl implements OrganizationService{
     @Inject
     UserService userService;
 
+
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    JsonWebToken jwt;
+
+    @Inject
+    SecurityIdentity securityIdentity;
+
 
     @Override
     public Uni<Long> createOrganization(OrganizationCreateDTO organizationDto) {
        return createOwner(organizationDto)
                .flatMap(owner -> doCreateOrganization(owner, organizationDto));
+    }
+
+
+
+    @Override
+    public Uni<AdminInvitationCreateResponse> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation) {
+        LOG.info(jwt.getGroups());
+        var response = new AdminInvitationCreateResponse();
+        response.invitationToken = UUID.randomUUID().toString();
+        return Uni.createFrom().item(response);
     }
 
 
