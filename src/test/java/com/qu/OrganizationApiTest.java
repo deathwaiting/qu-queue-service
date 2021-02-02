@@ -3,6 +3,7 @@ package com.qu;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.dto.AdminInvitationCreateResponse;
 import com.qu.persistence.entities.Organization;
+import com.qu.test.dto.AdminInvitationRow;
 import com.qu.test.utils.DaoUtil;
 import com.qu.test.utils.Sql;
 import io.quarkus.test.junit.QuarkusTest;
@@ -101,7 +102,7 @@ public class OrganizationApiTest {
         var invitation = dao.getSingleRow("select * from organization_admin_invitation where id = :id", AdminInvitationRow.class, Map.of("id", response.invitationToken));
 
         assertNotNull(invitation.getId());
-        assertEquals(4444L, invitation.getOrgId());
+        assertEquals(8888L, invitation.getOrganizationId());
         assertEquals(email, invitation.getEmail());
         assertEquals(roles.toString(), invitation.getRoles());
     }
@@ -111,10 +112,3 @@ public class OrganizationApiTest {
 
 
 
-@Data
-class AdminInvitationRow{
-    private String id;
-    private String orgId;
-    private String email;
-    private String roles;
-}

@@ -1,22 +1,28 @@
 package com.qu.persistence.entities;
 
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
 import javax.persistence.*;
 
 import static javax.persistence.FetchType.LAZY;
 
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "organization_admin_invitation")
-public class AdminInvitation {
+@Data
+public class AdminInvitation extends PanacheEntityBase {
     @Id
-    public String id;
+    private String id;
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "organization_id")
-    public Organization organization;
+    private Organization organization;
 
     @Column(name = "email")
-    public String email;
+    private String email;
 
     @Column(name = "roles")
-    public String roles;
+    private String roles;
 }

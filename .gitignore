@@ -36,4 +36,4 @@ nb-configuration.xml
 .env
 /docs/.~lock.usecases.ods#
 
-/src/test/resources/docker/
+src/test/resources/docker/00000_initial.sql

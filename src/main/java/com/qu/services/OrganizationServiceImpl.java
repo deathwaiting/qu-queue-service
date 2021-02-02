@@ -1,23 +1,31 @@
 package com.qu.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.commons.enums.UserGroup;
 import com.qu.dto.*;
 import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
+import com.qu.persistence.entities.AdminInvitation;
 import com.qu.persistence.entities.Organization;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.jboss.logging.Logger;
 
+import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.qu.commons.constants.Roles.USER_MANAGER;
+import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
+import static java.util.Optional.ofNullable;
 
 @ApplicationScoped
 public class OrganizationServiceImpl implements OrganizationService{
@@ -32,7 +40,8 @@ public class OrganizationServiceImpl implements OrganizationService{
     ObjectMapper objectMapper;
 
     @Inject
-    JsonWebToken jwt;
+    SecurityService securityService;
+
 
     @Inject
     SecurityIdentity securityIdentity;
@@ -47,11 +56,61 @@ public class OrganizationServiceImpl implements OrganizationService{
 
 
     @Override
+    @RolesAllowed(USER_MANAGER)
+    @Transactional
     public Uni<AdminInvitationCreateResponse> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation) {
-        LOG.info(jwt.getGroups());
-        var response = new AdminInvitationCreateResponse();
-        response.invitationToken = UUID.randomUUID().toString();
-        return Uni.createFrom().item(response);
+        return createAdminInvitation(invitation)
+                .flatMap(this::sendInvitationEmail)
+                .map(AdminInvitationCreateResponse::new);
+    }
+
+
+
+    private Uni<String> sendInvitationEmail(String token) {
+        return Uni.createFrom().item(token);
+    }
+
+
+
+    private Uni<String> createAdminInvitation(AdminInvitationCreateRequest invitation) {
+        var id = UUID.randomUUID().toString();
+        var invitationEntity = new AdminInvitation();
+        invitationEntity.setEmail(invitation.email);
+        invitationEntity.setId(id);
+        invitationEntity.setRoles(getRoles(invitation));
+        return getOrganizationUni()
+                .flatMap(org -> {invitationEntity.setOrganization(org); return invitationEntity.persistAndFlush();})
+                    .chain(() -> Uni.createFrom().item(id));
+    }
+
+
+
+    private String getRoles(AdminInvitationCreateRequest invitation) {
+        var roles = ofNullable(invitation.roles).orElse(emptyList());
+        validateAdminRoles(roles);
+        try{
+            return objectMapper.writeValueAsString(roles);
+        }catch(Throwable e){
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00003, roles.toString());
+        }
+    }
+
+
+
+    private void validateAdminRoles(List<String> roles) {
+        if(!userService.isValidUserRoles(roles)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00004, roles.toString());
+        }
+    }
+
+
+
+    private Uni<Organization> getOrganizationUni() {
+        var orgId =   securityService
+                        .getUserOrganization()
+                        .orElseThrow(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00002));
+        return Organization.findById(orgId);
     }
 
 
@@ -59,7 +118,7 @@ public class OrganizationServiceImpl implements OrganizationService{
     private Uni<? extends Long> doCreateOrganization(UserDto owner, OrganizationCreateDTO organizationDto) {
         try {
             validateNewOrgData(owner, organizationDto);
-            var ownerExtraDetails = objectMapper.writeValueAsString(Optional.ofNullable(owner.extraDetails).orElse(emptyMap()));
+            var ownerExtraDetails = objectMapper.writeValueAsString(ofNullable(owner.extraDetails).orElse(emptyMap()));
             var org = new Organization();
             org.setName(organizationDto.name);
             org.setOwnerId(owner.email);

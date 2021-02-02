@@ -7,5 +7,5 @@ delete from queue_actions;
 delete from queue_event_definition;
 delete from queue;
 delete from queue_type;
-delete from organization;
 delete from organization_admin_invitation;
+delete from organization;
