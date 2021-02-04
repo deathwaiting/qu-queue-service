@@ -6,9 +6,11 @@ import com.qu.persistence.entities.Organization;
 import com.qu.test.dto.AdminInvitationRow;
 import com.qu.test.utils.DaoUtil;
 import com.qu.test.utils.Sql;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Blocking;
 import lombok.Data;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
@@ -19,10 +21,13 @@ import static com.qu.test.utils.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static com.qu.test.utils.TestUtils.readTestResourceAsString;
 import static io.restassured.RestAssured.given;
+import static java.util.Collections.emptyList;
+import static java.util.Optional.ofNullable;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -36,9 +41,18 @@ public class OrganizationApiTest {
     @Inject
     ObjectMapper mapper;
 
+    @Inject
+    MockMailbox mailbox;
+
 
     static String jwt = readTestResourceAsString("keys/owner.jwt");
 
+
+
+    @BeforeEach
+    void init() {
+        mailbox.clear();
+    }
 
 
     @Test
@@ -105,6 +119,11 @@ public class OrganizationApiTest {
         assertEquals(8888L, invitation.getOrganizationId());
         assertEquals(email, invitation.getEmail());
         assertEquals(roles.toString(), invitation.getRoles());
+
+        var msgs = ofNullable(mailbox.getMessagesSentTo(email)).orElse(emptyList());
+        assertEquals( 1, msgs.size());
+        String mailBody = msgs.get(0).getHtml();
+        assertNotNull(mailBody);
     }
 
 }

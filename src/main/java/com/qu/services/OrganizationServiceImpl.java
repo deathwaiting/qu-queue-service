@@ -59,58 +59,9 @@ public class OrganizationServiceImpl implements OrganizationService{
     @RolesAllowed(USER_MANAGER)
     @Transactional
     public Uni<AdminInvitationCreateResponse> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation) {
-        return createAdminInvitation(invitation)
-                .flatMap(this::sendInvitationEmail)
+        return userService
+                .inviteOrganizationAdmin(invitation)
                 .map(AdminInvitationCreateResponse::new);
-    }
-
-
-
-    private Uni<String> sendInvitationEmail(String token) {
-        return Uni.createFrom().item(token);
-    }
-
-
-
-    private Uni<String> createAdminInvitation(AdminInvitationCreateRequest invitation) {
-        var id = UUID.randomUUID().toString();
-        var invitationEntity = new AdminInvitation();
-        invitationEntity.setEmail(invitation.email);
-        invitationEntity.setId(id);
-        invitationEntity.setRoles(getRoles(invitation));
-        return getOrganizationUni()
-                .flatMap(org -> {invitationEntity.setOrganization(org); return invitationEntity.persistAndFlush();})
-                    .chain(() -> Uni.createFrom().item(id));
-    }
-
-
-
-    private String getRoles(AdminInvitationCreateRequest invitation) {
-        var roles = ofNullable(invitation.roles).orElse(emptyList());
-        validateAdminRoles(roles);
-        try{
-            return objectMapper.writeValueAsString(roles);
-        }catch(Throwable e){
-            LOG.error(e,e);
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00003, roles.toString());
-        }
-    }
-
-
-
-    private void validateAdminRoles(List<String> roles) {
-        if(!userService.isValidUserRoles(roles)){
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00004, roles.toString());
-        }
-    }
-
-
-
-    private Uni<Organization> getOrganizationUni() {
-        var orgId =   securityService
-                        .getUserOrganization()
-                        .orElseThrow(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00002));
-        return Organization.findById(orgId);
     }
 
 
