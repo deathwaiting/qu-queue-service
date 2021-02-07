@@ -12,4 +12,5 @@ public interface OrganizationService {
     Uni<AdminInvitationCreateResponse> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation);
     Uni<String> acceptAdminInvitation(String token, String password, String passwordRepeat);
     Multi<AdminInvitationDTO> getAdminInvitations();
+    Uni<Void> cancelAdminInvitation(String invitationId);
 }

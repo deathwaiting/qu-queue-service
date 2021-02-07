@@ -14,4 +14,5 @@ public interface UserService {
     Uni<String> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation);
     Uni<String> acceptAdminInvitation(String token, String password);
     Multi<AdminInvitationDTO> getAdminInvitations();
+    Uni<Void> cancelAdminInvitation(String invitationId);
 }

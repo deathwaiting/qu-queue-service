@@ -12,6 +12,7 @@ import io.quarkus.qute.TemplateInstance;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.inject.Inject;
@@ -51,6 +52,14 @@ public class OrganizationController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Multi<AdminInvitationDTO> getAdminInvitations(){
         return orgService.getAdminInvitations();
+    }
+
+
+
+    @DELETE
+    @Path("/admin/invitation/{invitationId}")
+    public Uni<Void> cancelAdminInvitations(@RestPath String invitationId){
+        return orgService.cancelAdminInvitation(invitationId);
     }
 
 

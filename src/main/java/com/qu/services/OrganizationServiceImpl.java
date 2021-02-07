@@ -85,6 +85,15 @@ public class OrganizationServiceImpl implements OrganizationService{
     }
 
 
+
+
+    @Override
+    @RolesAllowed(USER_MANAGER)
+    public Uni<Void> cancelAdminInvitation(String invitationId) {
+        return userService.cancelAdminInvitation(invitationId);
+    }
+
+
     private Uni<? extends Long> doCreateOrganization(UserDto owner, OrganizationCreateDTO organizationDto) {
         try {
             validateNewOrgData(owner, organizationDto);

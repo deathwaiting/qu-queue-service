@@ -14,7 +14,7 @@ create table organization_admin_invitation(
     organization_id bigint not null references organization(id),
     email varchar(200) not null,
     roles text not null,
-    creation_time timestamp with time zone not null default now()
+    creation_time timestamp not null default now()
 );
 
 

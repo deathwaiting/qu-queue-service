@@ -72,6 +72,17 @@ public class DaoUtil {
 
 
 
+    public <T> T getSingleResult(String sql, Class<? extends T> resultType,  Map<String,?> params){
+        return jdbi
+                .withHandle( h ->
+                        h.createQuery(sql)
+                                .bindMap(params)
+                                .mapTo(resultType)
+                                .findOnly());
+    }
+
+
+
     public <T> T getFirstRow(String sql, Class<? extends T> resultType,  Map<String,?> params){
         return jdbi
                 .withHandle( h ->

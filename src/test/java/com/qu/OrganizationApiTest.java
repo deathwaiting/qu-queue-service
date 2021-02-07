@@ -222,6 +222,26 @@ public class OrganizationApiTest {
         assertNotNull(invitation.creationTime);
     }
 
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/organization_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void cancelAdminInvitations(){
+        var countBefore = dao.getSingleResult("select count(*) as cnt from organization_admin_invitation where id = :id", Integer.class, Map.of("id", "token"));
+        assertEquals(1, countBefore);
+
+        given()
+            .when()
+            .auth().oauth2(jwt)
+            .delete("/organization/admin/invitation/token")
+            .then()
+            .statusCode(204);
+
+        var countAfter = dao.getSingleResult("select count(*) from organization_admin_invitation where id = :id", Long.class, Map.of("id", "token"));
+        assertEquals(0L, countAfter);
+    }
+
 }
 
 

@@ -25,6 +25,8 @@ import org.jboss.logging.Logger;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.qu.commons.constants.Urls.ADMIN_INVITATION_FORM;
@@ -117,6 +119,14 @@ public class UserServiceImpl implements UserService{
     }
 
 
+
+
+    @Override
+    public Uni<Void> cancelAdminInvitation(String invitationId) {
+        return AdminInvitation
+                .delete("id = ?1", invitationId)
+                .chain(() -> Uni.createFrom().voidItem());
+    }
 
 
     private AdminInvitationDTO toAdminInvitationDto(AdminInvitation invitation) {

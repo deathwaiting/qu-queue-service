@@ -6,8 +6,7 @@ import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
-
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 import static javax.persistence.FetchType.LAZY;
 
@@ -29,7 +28,7 @@ public class AdminInvitation extends PanacheEntityBase {
     @Column(name = "roles")
     private String roles;
 
-    @CreationTimestamp
     @Column(name = "creation_time")
-    private ZonedDateTime creationTime;
+    @CreationTimestamp
+    private LocalDateTime creationTime;
 }
