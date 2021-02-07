@@ -5,6 +5,7 @@ import com.qu.dto.*;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.persistence.entities.Organization;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.logging.Logger;
 
@@ -72,6 +73,15 @@ public class OrganizationServiceImpl implements OrganizationService{
         }
         return userService
                 .acceptAdminInvitation(token, password);
+    }
+
+
+
+
+    @Override
+    @RolesAllowed(USER_MANAGER)
+    public Multi<AdminInvitationDTO> getAdminInvitations() {
+        return userService.getAdminInvitations();
     }
 
 

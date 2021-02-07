@@ -4,10 +4,12 @@ import com.qu.commons.constants.Urls;
 import com.qu.controller.html.HtmlTemplates;
 import com.qu.dto.AdminInvitationCreateRequest;
 import com.qu.dto.AdminInvitationCreateResponse;
+import com.qu.dto.AdminInvitationDTO;
 import com.qu.dto.OrganizationCreateDTO;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.services.OrganizationService;
 import io.quarkus.qute.TemplateInstance;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
@@ -39,6 +41,16 @@ public class OrganizationController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Uni<AdminInvitationCreateResponse> inviteAdmin(AdminInvitationCreateRequest invitation){
         return orgService.inviteOrganizationAdmin(invitation);
+    }
+
+
+
+    @GET
+    @Path("/admin/invitation")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Multi<AdminInvitationDTO> getAdminInvitations(){
+        return orgService.getAdminInvitations();
     }
 
 

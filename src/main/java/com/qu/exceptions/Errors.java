@@ -4,6 +4,7 @@ public enum Errors {
     E$GEN$00001("Missing required data!"),
     E$GEN$00002("No Organization found for the user!"),
     E$GEN$00003("Failed to write object as json string! object[%s]"),
+    E$GEN$00004("Failed to parse json string! string[%s]"),
 
     E$USR$00001("Invalid roles [%s]!"),
     E$USR$00002("Passwords didn't match!"),

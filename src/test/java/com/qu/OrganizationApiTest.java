@@ -2,19 +2,24 @@ package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.dto.AdminInvitationCreateResponse;
+import com.qu.dto.AdminInvitationDTO;
 import com.qu.persistence.entities.Organization;
 import com.qu.test.dto.AdminInvitationRow;
 import com.qu.test.utils.DaoUtil;
 import com.qu.test.utils.Sql;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.common.mapper.TypeRef;
 import io.smallrye.common.annotation.Blocking;
 import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.inject.Inject;
+import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
 import static com.qu.commons.constants.Urls.ADMIN_INVITATION_FORM;
@@ -187,6 +192,34 @@ public class OrganizationApiTest {
                         .asPrettyString();
 
         assertTrue(true);
+    }
+
+
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/organization_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void listAdminInvitations(){
+        var response =
+                given()
+                    .when()
+                        .auth().oauth2(jwt)
+                    .get("/organization/admin/invitation")
+                    .then()
+                    .statusCode(200)
+                    .body(notNullValue())
+                    .extract()
+                    .body()
+                    .as(new TypeRef<List<AdminInvitationDTO>>(){ });
+
+        assertEquals(1, response.size());
+        var invitation = response.get(0);
+        assertEquals("token", invitation.id);
+        assertEquals("admin@fake.com", invitation.email);
+        assertEquals(Set.of("QUEUE_MANAGER"), invitation.roles);
+        assertNotNull(invitation.creationTime);
     }
 
 }

@@ -1,10 +1,14 @@
 package com.qu.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.UserGroup;
 import com.qu.dto.AdminInvitationCreateRequest;
+import com.qu.dto.AdminInvitationDTO;
 import com.qu.dto.UserCreationDto;
 import com.qu.dto.UserDto;
+import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.UserDtoMapper;
 import com.qu.persistence.entities.AdminInvitation;
@@ -13,6 +17,7 @@ import com.qu.services.mail.params.AdminInviteParameters;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.reactive.ReactiveMailer;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -25,6 +30,7 @@ import java.util.*;
 import static com.qu.commons.constants.Urls.ADMIN_INVITATION_FORM;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.services.mail.UserMailTemplates.Templates.adminInvite;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -101,6 +107,36 @@ public class UserServiceImpl implements UserService{
 
 
 
+    @Override
+    public Multi<AdminInvitationDTO> getAdminInvitations() {
+        var orgId = securityService.getUserOrganization();
+        return AdminInvitation
+                .<AdminInvitation>find("SELECT inv FROM AdminInvitation inv WHERE inv.organization.id = ?1", orgId)
+                .stream()
+                .map(this::toAdminInvitationDto);
+    }
+
+
+
+
+    private AdminInvitationDTO toAdminInvitationDto(AdminInvitation invitation) {
+        var dto = new AdminInvitationDTO();
+        dto.creationTime = invitation.getCreationTime();
+        dto.id = invitation.getId();
+        dto.email = invitation.getEmail();
+        try {
+            dto.roles =
+                    objectMapper
+                    .readValue(ofNullable(invitation.getRoles()).orElse("[]")
+                            , new TypeReference<Set<String>>(){});
+        } catch (JsonProcessingException e) {
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00004, dto.roles);
+        }
+        return dto;
+    }
+
+
 
     private Uni<? extends String> createAdmin(AdminInvitation invitation, String password) {
         //TODO this needs to connect to keycloack and create a user there, for now, it will just return the same DTO
@@ -147,6 +183,7 @@ public class UserServiceImpl implements UserService{
     }
 
 
+
     private Uni<AdminInvitation> createAdminInvitationInDb(AdminInvitationCreateRequest invitation, Organization org){
         var id = UUID.randomUUID().toString();
         var invitationEntity = new AdminInvitation();
@@ -156,6 +193,7 @@ public class UserServiceImpl implements UserService{
         invitationEntity.setOrganization(org);
         return invitationEntity.persistAndFlush().chain(() -> Uni.createFrom().item(invitationEntity));
     }
+
 
 
     private String getRoles(AdminInvitationCreateRequest invitation) {
@@ -180,10 +218,7 @@ public class UserServiceImpl implements UserService{
 
 
     private Uni<Organization> getOrganizationUni() {
-        var orgId =
-                securityService
-                .getUserOrganization()
-                .orElseThrow(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00002));
+        var orgId = securityService.getUserOrganization();
         return Organization.findById(orgId);
     }
 

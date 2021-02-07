@@ -3,8 +3,11 @@ package com.qu.persistence.entities;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+
+import java.time.ZonedDateTime;
 
 import static javax.persistence.FetchType.LAZY;
 
@@ -25,4 +28,8 @@ public class AdminInvitation extends PanacheEntityBase {
 
     @Column(name = "roles")
     private String roles;
+
+    @CreationTimestamp
+    @Column(name = "creation_time")
+    private ZonedDateTime creationTime;
 }
