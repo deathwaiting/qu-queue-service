@@ -5,7 +5,10 @@ public enum Errors {
     E$GEN$00002("No Organization found for the user!"),
     E$GEN$00003("Failed to write object as json string! object[%s]"),
 
-    E$USR$00004("Invalid roles [%s]!");
+    E$USR$00001("Invalid roles [%s]!"),
+    E$USR$00002("Passwords didn't match!"),
+    E$USR$00003("Invalid invitation token!")
+    ;
 
     private String msg;
 

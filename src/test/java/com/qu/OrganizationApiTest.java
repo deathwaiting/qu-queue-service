@@ -17,6 +17,7 @@ import javax.inject.Inject;
 import java.util.Map;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
+import static com.qu.commons.constants.Urls.ADMIN_INVITATION_FORM;
 import static com.qu.test.utils.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static com.qu.test.utils.TestUtils.readTestResourceAsString;
@@ -28,8 +29,7 @@ import static javax.json.Json.createObjectBuilder;
 import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @Blocking       //we need this to run jdbi with jdbc database connection for some reason
@@ -124,6 +124,69 @@ public class OrganizationApiTest {
         assertEquals( 1, msgs.size());
         String mailBody = msgs.get(0).getHtml();
         assertNotNull(mailBody);
+    }
+
+
+
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/organization_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void acceptAdminInvitation(){
+        var email = "admin@fake.com";
+
+        var regPage =
+                given()
+                    .when()
+                    .param("token", "token")
+                    .get("/organization"+ADMIN_INVITATION_FORM)
+                    .then()
+                    .statusCode(200)
+                    .body(notNullValue())
+                    .extract()
+                    .body()
+                    .asPrettyString();
+
+        var regResponse =
+                given()
+                    .when()
+                    .formParam("token", "token")
+                        .formParam("password", "p@ss")
+                        .formParam("passwordRepeat", "p@ss")
+                    .post("/organization"+ADMIN_INVITATION_FORM)
+                    .then()
+                    .statusCode(200)
+                    .body(notNullValue())
+                    .extract()
+                    .body()
+                    .asPrettyString();
+
+        assertTrue(true);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/organization_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void acceptAdminInvitationFail(){
+        var regResponse =
+                given()
+                        .when()
+                        .formParam("token", "token")
+                        .formParam("password", "p@ss")
+                        .formParam("passwordRepeat", "NOTp@ss")
+                        .post("/organization"+ADMIN_INVITATION_FORM)
+                        .then()
+                        .statusCode(200)
+                        .body(notNullValue())
+                        .extract()
+                        .body()
+                        .asPrettyString();
+
+        assertTrue(true);
     }
 
 }

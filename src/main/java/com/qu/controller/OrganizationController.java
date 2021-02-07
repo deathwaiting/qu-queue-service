@@ -1,17 +1,22 @@
 package com.qu.controller;
 
+import com.qu.commons.constants.Urls;
+import com.qu.controller.html.HtmlTemplates;
 import com.qu.dto.AdminInvitationCreateRequest;
 import com.qu.dto.AdminInvitationCreateResponse;
 import com.qu.dto.OrganizationCreateDTO;
+import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.services.OrganizationService;
+import io.quarkus.qute.TemplateInstance;
 import io.smallrye.mutiny.Uni;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.inject.Inject;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+
+import static com.qu.controller.html.HtmlTemplates.Templates.*;
 
 @Path("/organization")
 public class OrganizationController {
@@ -36,4 +41,25 @@ public class OrganizationController {
         return orgService.inviteOrganizationAdmin(invitation);
     }
 
+
+
+    @GET
+    @Path(Urls.ADMIN_INVITATION_FORM)
+    @Produces(MediaType.TEXT_HTML)
+    public Uni<String> getAdminRegistrationPage(@RestQuery String token){
+        return AdminRegistration(token).createUni();
+    }
+
+
+
+    @POST
+    @Path(Urls.ADMIN_INVITATION_FORM)
+    @Produces(MediaType.TEXT_HTML)
+    public Uni<String> getAdminRegistrationPage(@RestForm String token, @RestForm String password,@RestForm String passwordRepeat){
+        return orgService
+                .acceptAdminInvitation(token, password, passwordRepeat)
+                .flatMap(id -> AdminRegistrationSuccess(id).createUni())
+                .onFailure()
+                .recoverWithUni(e -> AdminRegistrationFail(e.getLocalizedMessage()).createUni());
+    }
 }

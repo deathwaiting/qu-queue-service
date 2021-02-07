@@ -10,6 +10,7 @@ import com.qu.mappers.UserDtoMapper;
 import com.qu.persistence.entities.AdminInvitation;
 import com.qu.persistence.entities.Organization;
 import com.qu.services.mail.params.AdminInviteParameters;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.reactive.ReactiveMailer;
 import io.smallrye.mutiny.Uni;
@@ -89,6 +90,26 @@ public class UserServiceImpl implements UserService{
 
 
 
+    @Override
+    @Transactional
+    public Uni<String> acceptAdminInvitation(String token, String password) {
+        return AdminInvitation
+                .<AdminInvitation>findById(token)
+                .onItem().ifNull().failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00003))
+                .flatMap(invitation -> createAdmin(invitation, password));
+    }
+
+
+
+
+    private Uni<? extends String> createAdmin(AdminInvitation invitation, String password) {
+        //TODO this needs to connect to keycloack and create a user there, for now, it will just return the same DTO
+        //while setting the id as a UUID
+        return Uni.createFrom().item(randomUUID().toString());
+    }
+
+
+
     private Uni<String> sendInvitationEmail(AdminInvitationContext ctx) {
         var mailParams = getInvitationMailParams(ctx.token, ctx.organization);
         return adminInvite(mailParams)
@@ -152,7 +173,7 @@ public class UserServiceImpl implements UserService{
 
     private void validateAdminRoles(List<String> roles) {
         if(!isValidUserRoles(roles)){
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00004, roles.toString());
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00001, roles.toString());
         }
     }
 

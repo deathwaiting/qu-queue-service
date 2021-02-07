@@ -14,4 +14,5 @@ public interface UserService {
     List<UserGroup> getUserGroups();
     boolean isValidUserRoles(List<String> roles);
     Uni<String> inviteOrganizationAdmin(AdminInvitationCreateRequest invitation);
+    Uni<String> acceptAdminInvitation(String token, String password);
 }

@@ -1,29 +1,24 @@
 package com.qu.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qu.commons.enums.UserGroup;
 import com.qu.dto.*;
-import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
-import com.qu.persistence.entities.AdminInvitation;
 import com.qu.persistence.entities.Organization;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import org.jboss.logging.Logger;
 
+import javax.annotation.security.PermitAll;
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.Objects;
 
 import static com.qu.commons.constants.Roles.USER_MANAGER;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Optional.ofNullable;
 
@@ -48,6 +43,8 @@ public class OrganizationServiceImpl implements OrganizationService{
 
 
     @Override
+    @PermitAll
+    @Transactional
     public Uni<Long> createOrganization(OrganizationCreateDTO organizationDto) {
        return createOwner(organizationDto)
                .flatMap(owner -> doCreateOrganization(owner, organizationDto));
@@ -64,6 +61,18 @@ public class OrganizationServiceImpl implements OrganizationService{
                 .map(AdminInvitationCreateResponse::new);
     }
 
+
+
+    @Override
+    @PermitAll
+    @Transactional
+    public Uni<String> acceptAdminInvitation(String token, String password, String passwordRepeat) {
+        if(!Objects.equals(password, passwordRepeat)){
+            return Uni.createFrom().failure( new RuntimeBusinessException(NOT_ACCEPTABLE, E$USR$00002));
+        }
+        return userService
+                .acceptAdminInvitation(token, password);
+    }
 
 
     private Uni<? extends Long> doCreateOrganization(UserDto owner, OrganizationCreateDTO organizationDto) {
@@ -86,7 +95,7 @@ public class OrganizationServiceImpl implements OrganizationService{
 
     private void validateNewOrgData(UserDto owner, OrganizationCreateDTO organizationDto) {
         if(anyIsNull(owner, organizationDto, owner.id, organizationDto.name)){
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, Errors.E$GEN$00001);
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00001);
         }
     }
 
