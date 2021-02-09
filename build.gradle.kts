@@ -36,6 +36,7 @@ dependencies {
 
     testImplementation("io.quarkus:quarkus-jdbc-postgresql")
     testImplementation("io.quarkus:quarkus-junit5")
+    testImplementation("io.quarkus:quarkus-junit5-mockito")
     testImplementation("io.rest-assured:rest-assured")
     testImplementation("org.testcontainers:postgresql:1.15.1")
     testImplementation("org.jdbi:jdbi3-core:3.1.0")

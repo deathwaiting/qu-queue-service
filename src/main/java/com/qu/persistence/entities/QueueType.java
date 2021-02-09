@@ -2,6 +2,7 @@ package com.qu.persistence.entities;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import lombok.Data;
 
 import javax.persistence.*;
 import java.util.Set;
@@ -12,6 +13,7 @@ import static javax.persistence.GenerationType.IDENTITY;
 
 @Entity
 @Table(name = "queue_type")
+@Data
 public class QueueType extends PanacheEntityBase {
 
     @Id
@@ -19,20 +21,20 @@ public class QueueType extends PanacheEntityBase {
     private Long id;
 
     @Column(name = "name")
-    public String name;
+    private String name;
 
     @Column(name = "default_max_size")
-    public Integer defaultMaxSize;
+    private Integer defaultMaxSize;
 
     @Column(name = "default_hold_enabled")
-    public Boolean defaultHoldEnabled;
+    private Boolean defaultHoldEnabled;
 
     @Column(name = "default_auto_accept_enabled")
-    public Boolean defaultAutoAcceptEnabled;
+    private Boolean defaultAutoAcceptEnabled;
 
     @Column(name = "organization_id")
-    public Long organizationId;
+    private Long organizationId;
 
     @OneToMany(mappedBy = "queueType", cascade = ALL)
-    public Set<QueueEventDefinition>  events;
+    private Set<QueueEventDefinition>  events;
 }

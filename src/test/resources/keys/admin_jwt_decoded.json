@@ -1,0 +1,17 @@
+{
+  "iss": "DinoChiesa.github.io",
+  "sub": "ming",
+  "aud": "anna",
+  "iat": 1612110856,
+  "exp": 2612211456,
+  "alpha": [
+    "6kpheyn74hvc8swiyndcs",
+    false
+  ],
+  "name": "fakedmin",
+  "email": "admin@fake.com",
+  "groups": [
+    "ROLE_QUEUE_ADMIN"
+  ],
+  "organizationId": 8888
+}

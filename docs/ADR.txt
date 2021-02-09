@@ -34,3 +34,30 @@
             at time. reactive-hibernate natively uses reactive clients for postgres, but had some boiler plate.
             ---- but as being integrated with quarkus, i am now more confident that i will have less problems with
                  builds, also the panache supports should make boiler plate much less.
+
+- queues event system
+     -- certain events are triggered on certain queue events
+        --- ex: when a customer is enqueued, we can send an email or an sms to him with his turn info.
+        --- these events are variable, as each queue may have different needs
+        --- these events have types, some are filters, that decides if the action should continue, or may override the
+        action.
+            * ex: if a customer is picked after being skipped twice, he should be ejected from the queue instead!
+        --- but we can't use reflection with such events to improve performance and to use CDI injection and native builds
+        --- this is where we can make use of vert.x!
+     -- each event handler is a vert.x verticle !
+        --- instead of creating handlers at runtime using reflection, each event handler is actually a vert.x verticle
+        --- so, it is more of a service that is on standby, waiting for events to be published to it from any queue.
+        --- this gives us flexibility of architecture, as we can reference these events by just names and publish events
+            by type on the bus, and they will pick it up.
+        --- depending on the event operation, we can make the verticle as IO eventloop or worker thread verticle.
+        --- and this opens the door for extensibility , as vert.x event bus can be connected over several deployments.
+            which means we can add events without need for code modifications or downtime.
+     -- as events are a code and a bunch of data[name, type, description, parameters class, sample parameter]
+        --- so an event will be an implementation of an interface QueueEvent
+        --- the event handler will be inside the event class
+        --- the event name will be assumed to be the class qualifying name, or static constant provided by the class
+        --- each event should implement a static method the returns QueueEventInfo containing its static data
+        --- active event classes will be grouped inside class QueueEvents, an event will be registered by calling its
+            getInfo() static method.
+        --- the class will build a map of events info at startup, events with similar names will simply cause startup
+         error.
