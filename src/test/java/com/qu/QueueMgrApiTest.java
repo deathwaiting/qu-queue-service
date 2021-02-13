@@ -2,7 +2,6 @@ package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.dto.QueueTypeDto;
-import com.qu.services.QueueEventPhase;
 import com.qu.services.queue.event.QueueEventHandlersImpl;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import com.qu.test.utils.DaoUtil;
@@ -10,7 +9,6 @@ import com.qu.test.utils.Sql;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectMock;
 import io.restassured.common.mapper.TypeRef;
-import io.restassured.http.ContentType;
 import io.smallrye.common.annotation.Blocking;
 import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,8 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import javax.inject.Inject;
-import javax.json.JsonBuilderFactory;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +32,7 @@ import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 @Blocking       //we need this to run jdbi with jdbc database connection for some reason
@@ -141,6 +140,54 @@ public class QueueMgrApiTest {
 
 
 
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void createQueue(){
+        var body = createQueueRequest();
+        var response =
+                given()
+                    .when()
+                    .contentType(JSON)
+                    .auth().oauth2(adminJwt)
+                    .body(body)
+                    .post("/queue")
+                    .then()
+                    .statusCode(200)
+                    .body(notNullValue())
+                    .extract()
+                    .body()
+                    .as(Long.class);
+
+        var row =
+                dao
+                .getSingleRow("SELECT * FROM QUEUE WHERE id = :id"
+                        , QueueRow.class
+                        , Map.of("id", response));
+
+        //times are saved in UTC
+        assertEquals(LocalDateTime.of(1994,11,5,6,15,30) , row.startTime);
+        assertEquals(LocalDateTime.of(1994,11,5,11,15,30) , row.endTime);
+        assertEquals(row.maxSize, 10);
+        assertTrue(row.autoAcceptEnabled && row.holdEnabled);
+    }
+
+
+
+    private String createQueueRequest() {
+        return createObjectBuilder()
+                .add("autoAcceptEnabled", true)
+                .add("queue_type_id", 88888)
+                .add("holdEnabled", true)
+                .add("max_size", 10)
+                .add("start_time", "1994-11-05T08:15:30+02:00")
+                .add("end_time", "1994-11-05T13:15:30+02:00")
+                .build()
+                .toString();
+    }
+
+
     private String createQueueTypeCreationRequest(String name) {
         var handler =
                 createObjectBuilder()
@@ -192,6 +239,18 @@ public class QueueMgrApiTest {
         public String eventType;
         public String name;
         public Long queueTypeId;
+    }
+
+
+
+    @Data
+    public static class QueueRow{
+        public Long id;
+        public Boolean autoAcceptEnabled;
+        public Boolean holdEnabled;
+        public Integer maxSize;
+        public LocalDateTime startTime;
+        public LocalDateTime endTime;
     }
 }
 

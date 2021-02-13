@@ -40,12 +40,13 @@ create table queue_event_handler(
 
 create table queue(
     id bigserial primary key,
-    start_time timestamp with time zone not null,
-    end_time timestamp with time zone,
+    start_time timestamp  not null,
+    end_time timestamp not null,
     max_size integer,
-    hold_enable boolean,
+    hold_enabled boolean,
     auto_accept_enabled boolean,
-    queue_type_id bigint references queue_type(id)
+    queue_type_id bigint references queue_type(id),
+    name text not null
 );
 
 

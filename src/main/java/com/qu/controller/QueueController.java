@@ -1,5 +1,6 @@
 package com.qu.controller;
 
+import com.qu.dto.QueueDto;
 import com.qu.dto.QueueTypeDto;
 import com.qu.services.queue.event.QueueManagementService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
@@ -40,5 +41,14 @@ public class QueueController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Multi<QueueTypeDto> getQueueTypes(){
         return queueMgrService.getQueueTypes();
+    }
+
+
+
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Uni<Long> createQueue(QueueDto queue){
+        return queueMgrService.createQueue(queue);
     }
 }

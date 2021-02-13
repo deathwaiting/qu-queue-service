@@ -3,14 +3,17 @@ package com.qu.services.queue.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.dto.QueueDto;
 import com.qu.dto.QueueEventDto;
 import com.qu.dto.QueueTypeDto;
 import com.qu.exceptions.RuntimeBusinessException;
+import com.qu.persistence.entities.Queue;
 import com.qu.persistence.entities.QueueEventHandler;
 import com.qu.persistence.entities.QueueType;
 import com.qu.services.QueueEventPhase;
 import com.qu.services.SecurityService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.logging.Logger;
@@ -20,6 +23,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,6 +91,53 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     }
 
 
+
+
+    @Override
+    @RolesAllowed(QUEUE_ADMIN)
+    public Uni<Long> createQueue(QueueDto queue) {
+        validateQueue(queue);
+        return QueueType
+                .<QueueType>findById(queue.queueTypeId)
+                    .onItem()
+                    .ifNull()
+                    .failWith(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00002))
+                .map(type -> createQueueEntity(queue, type))
+                .flatMap(entity ->
+                        entity
+                        .persistAndFlush()
+                        .chain(() -> Uni.createFrom().item(entity)))
+                .map(Queue::getId);
+    }
+
+
+
+    private Queue createQueueEntity(QueueDto queue, QueueType type) {
+        var endTime = queue.endTime.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
+        var startTime = queue.startTime.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
+        var autoAccept = ofNullable(queue.autoAcceptEnabled).orElse(type.getDefaultAutoAcceptEnabled());
+        var holdAccept = ofNullable(queue.holdEnabled).orElse(type.getDefaultHoldEnabled());
+        var maxSize =  ofNullable(queue.maxSize).orElse(type.getDefaultMaxSize());
+        var name = ofNullable(queue.name).orElse(type.getName());
+
+        var entity = new Queue();
+        entity.setType(type);
+        entity.setEndTime(endTime);
+        entity.setStartTime(startTime);
+        entity.setAutoAcceptEnabled(autoAccept);
+        entity.setHoldEnabled(holdAccept);
+        entity.setMaxSize(maxSize);
+        entity.setName(name);
+        return entity;
+    }
+
+
+
+    private void validateQueue(QueueDto queue) {
+        if(anyIsNull(queue, queue.endTime, queue.startTime, queue.queueTypeId)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00001);
+        }
+    }
 
 
     private QueueTypeDto toQueueTypeDto(QueueType type) {
