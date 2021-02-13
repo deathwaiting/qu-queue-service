@@ -52,16 +52,17 @@ create table queue(
 
 create table queue_actions(
     id bigserial primary key,
-    action_time timestamp with time zone not null,
-    action_type varchar(20)
+    action_time timestamp not null,
+    action_type varchar(20),
+    queue_id bigint not null references queue(id)
 );
 
 
 create table queue_request(
     id bigserial primary key,
     client_id text,
-    request_time timestamp with time zone not null,
-    response_time timestamp with time zone,
+    request_time timestamp not null,
+    response_time timestamp ,
     client_details text,
     queue_id bigint references queue(id),
     refused boolean default false
@@ -71,7 +72,7 @@ create table queue_request(
 
 create table queue_turn(
     id bigserial primary key,
-    enqueue_time timestamp with time zone not null,
+    enqueue_time timestamp not null,
     request_id bigint references queue_request(id),
     queue_number text not null
 );
@@ -80,7 +81,7 @@ create table queue_turn(
 create table queue_leave(
     id bigserial primary key,
     queue_turn_id bigint references queue_turn(id),
-    leave_time timestamp with time zone not null
+    leave_time timestamp not null
 );
 
 
@@ -95,8 +96,8 @@ create table queue_turn_insertion(
 
 create table queue_turn_pick(
     id bigserial primary key,
-    pick_time timestamp with time zone not null,
-    skip_time timestamp with time zone not null,
+    pick_time timestamp not null,
+    skip_time timestamp not null,
     skip_reason varchar(1000),
     server_id text,
     server_details text

@@ -1,6 +1,8 @@
 package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.dto.QueueDto;
+import com.qu.dto.QueueListResponse;
 import com.qu.dto.QueueTypeDto;
 import com.qu.services.queue.event.QueueEventHandlersImpl;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
@@ -46,6 +48,7 @@ public class QueueMgrApiTest {
     ObjectMapper mapper;
 
     static String adminJwt = readTestResourceAsString("keys/admin.jwt");
+    static String serverJwt = readTestResourceAsString("keys/server.jwt");
 
     @InjectMock
     QueueEventHandlersImpl handlers;
@@ -171,6 +174,28 @@ public class QueueMgrApiTest {
         assertEquals(LocalDateTime.of(1994,11,5,11,15,30) , row.endTime);
         assertEquals(row.maxSize, 10);
         assertTrue(row.autoAcceptEnabled && row.holdEnabled);
+    }
+
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void getQueuesList(){
+        var response =
+                given()
+                        .when()
+                            .auth().oauth2(serverJwt)
+                        .get("/queue")
+                        .then()
+                        .statusCode(200)
+                        .body(notNullValue())
+                        .extract()
+                        .body()
+                        .as(QueueListResponse.class);
+
+        assertEquals(2, response.queues.size());
     }
 
 

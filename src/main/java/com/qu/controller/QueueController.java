@@ -1,11 +1,14 @@
 package com.qu.controller;
 
 import com.qu.dto.QueueDto;
+import com.qu.dto.QueueListParams;
+import com.qu.dto.QueueListResponse;
 import com.qu.dto.QueueTypeDto;
 import com.qu.services.queue.event.QueueManagementService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
@@ -50,5 +53,18 @@ public class QueueController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Uni<Long> createQueue(QueueDto queue){
         return queueMgrService.createQueue(queue);
+    }
+
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Uni<QueueListResponse> getQueueList(
+            @DefaultValue("30") @RestQuery("page_count") Integer pageCount
+            , @DefaultValue("0") @RestQuery("page_num") Integer pageIndex){
+        var params = new QueueListParams();
+        params.pageNum = pageIndex;
+        params.pageSize = pageCount;
+        return queueMgrService.getQueueList(params);
     }
 }

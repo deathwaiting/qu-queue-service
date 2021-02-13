@@ -2,6 +2,7 @@ package com.qu.dto;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.qu.commons.enums.QueueStatus;
 
 import java.time.ZonedDateTime;
 
@@ -15,4 +16,5 @@ public class QueueDto {
     public ZonedDateTime endTime;
     public Long queueTypeId;
     public String name;
+    public QueueStatus status;
 }

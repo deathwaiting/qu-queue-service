@@ -3,17 +3,17 @@ package com.qu.services.queue.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qu.dto.QueueDto;
-import com.qu.dto.QueueEventDto;
-import com.qu.dto.QueueTypeDto;
+import com.qu.commons.enums.QueueActions;
+import com.qu.commons.enums.QueueStatus;
+import com.qu.dto.*;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.persistence.entities.Queue;
+import com.qu.persistence.entities.QueueAction;
 import com.qu.persistence.entities.QueueEventHandler;
 import com.qu.persistence.entities.QueueType;
 import com.qu.services.QueueEventPhase;
 import com.qu.services.SecurityService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.logging.Logger;
@@ -24,11 +24,15 @@ import javax.inject.Inject;
 import javax.transaction.Transactional;
 
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
+import static com.qu.commons.constants.Roles.QUEUE_MANAGER;
+import static com.qu.commons.enums.QueueActions.*;
+import static com.qu.commons.enums.QueueStatus.INACTIVE;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
@@ -110,6 +114,59 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .map(Queue::getId);
     }
 
+
+
+
+    @Override
+    @RolesAllowed(QUEUE_MANAGER)
+    @Transactional
+    public Uni<QueueListResponse> getQueueList(QueueListParams params) {
+        Long orgId = securityService.getUserOrganization();
+        return Queue
+                .getQueuesByOrganization(orgId, params)
+                .map(this::toQueueListResponse);
+    }
+
+
+
+
+
+    private QueueListResponse toQueueListResponse(Queue.QueueListPage page) {
+        var data = page.page.stream().map(this::toQueueDto).collect(toList());
+        return new QueueListResponse(page.totalPagesCount, data);
+    }
+
+
+
+
+    private QueueDto toQueueDto(Queue entity) {
+        var dto = new QueueDto();
+        dto.autoAcceptEnabled = entity.getAutoAcceptEnabled();
+        dto.endTime = entity.getEndTime().atZone(ZoneId.of("UTC"));
+        dto.id = entity.getId();
+        dto.name = entity.getName();
+        dto.holdEnabled = entity.getHoldEnabled();
+        dto.maxSize = entity.getMaxSize();
+        dto.queueTypeId = entity.getType().getId();
+        dto.startTime = entity.getStartTime().atZone(ZoneId.of("UTC"));
+        dto.status = getQueueStatus(entity);
+        return dto;
+    }
+
+
+
+    private QueueStatus getQueueStatus(Queue entity) {
+        return entity
+                .getActions()
+                .stream()
+                .sorted(Comparator.comparing(QueueAction::getActionTime).reversed())
+                .map(QueueAction::getActionType)
+                .map(QueueActions::valueOf)
+                .filter(action -> Set.of(SUSPEND, END, START).contains(action))
+                .map(QueueActions::getStatus)
+                .findFirst()
+                .orElse(INACTIVE);
+    }
 
 
     private Queue createQueueEntity(QueueDto queue, QueueType type) {

@@ -17,6 +17,18 @@ values ( 77772, '{"pokemon": "sharizard"}', 'ENQUEUE_ACTION', 'RELEASE_POKEMON',
 
 
 
+insert into queue ( "id", auto_accept_enabled, end_time, hold_enabled, max_size,"name", queue_type_id, start_time)
+values ( 99933, false, '2020-12-25 13:04:05.123', true, 10, 'Clinc queue', 88888,'2020-12-24 13:04:05.123');
+
+insert into queue ( "id", auto_accept_enabled, end_time, hold_enabled, max_size,"name", queue_type_id, start_time)
+values ( 99934, false, '2020-12-26 13:04:05.123', true, 10, 'Clinc queue2', 88888,'2020-12-25 13:04:05.123');
+
+insert into queue_actions ("id",action_time, action_type, queue_id)values ( 888777, now(), 'START', 99934);
+;
+
+
+
+
 
 
 
