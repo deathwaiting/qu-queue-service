@@ -35,7 +35,7 @@ public class QueueEventHandlersImpl implements QueueEventHandlers {
     }
 
 
-
+    @Override
     public Set<QueueEventHandlerInfo<?>> getActiveHandlers(){
         return HANDLERS;
     }

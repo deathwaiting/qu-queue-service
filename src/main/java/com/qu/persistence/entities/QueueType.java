@@ -3,14 +3,18 @@ package com.qu.persistence.entities;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import javax.persistence.*;
+import java.util.HashSet;
 import java.util.Set;
 
 import static javax.persistence.CascadeType.ALL;
 import static javax.persistence.GenerationType.AUTO;
 import static javax.persistence.GenerationType.IDENTITY;
 
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "queue_type")
 @Data
@@ -36,5 +40,11 @@ public class QueueType extends PanacheEntityBase {
     private Long organizationId;
 
     @OneToMany(mappedBy = "queueType", cascade = ALL)
-    private Set<QueueEventDefinition>  events;
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private Set<QueueEventDefinition>  eventHandlers;
+
+    public QueueType(){
+        eventHandlers = new HashSet<>();
+    }
 }

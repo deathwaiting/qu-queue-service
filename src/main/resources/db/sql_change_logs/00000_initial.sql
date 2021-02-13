@@ -23,6 +23,7 @@ create table queue_type(
     default_max_size integer,
     default_hold_enabled boolean,
     default_auto_accept_enabled boolean,
+    name text not null,
     organization_id bigint not null references organization(id)
 );
 
@@ -30,7 +31,8 @@ create table queue_type(
 
 create table queue_event_definition(
     id bigserial primary key,
-    event_type varchar(20),
+    event_type varchar(50) not null,
+    name text not null ,
     queue_type_id bigint references queue_type(id),
     event_data text
 );

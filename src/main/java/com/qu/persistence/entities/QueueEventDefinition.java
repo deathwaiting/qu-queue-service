@@ -2,14 +2,19 @@ package com.qu.persistence.entities;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import javax.persistence.*;
 
 import static javax.persistence.GenerationType.AUTO;
 import static javax.persistence.GenerationType.IDENTITY;
 
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "queue_event_definition")
+@Data
 public class QueueEventDefinition extends PanacheEntityBase {
 
     @Id
@@ -27,5 +32,7 @@ public class QueueEventDefinition extends PanacheEntityBase {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "queue_type_id")
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     public QueueType queueType;
 }

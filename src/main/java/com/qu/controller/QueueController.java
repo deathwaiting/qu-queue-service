@@ -21,7 +21,7 @@ public class QueueController {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     public Uni<Long> createQueueType(QueueTypeDto queueTemplate){
-        return Uni.createFrom().item(-1L);
+        return queueMgrService.createQueueType(queueTemplate);
     }
 
 
