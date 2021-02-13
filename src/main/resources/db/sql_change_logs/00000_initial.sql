@@ -29,12 +29,12 @@ create table queue_type(
 
 
 
-create table queue_event_definition(
+create table queue_event_handler(
     id bigserial primary key,
     event_type varchar(50) not null,
     name text not null ,
     queue_type_id bigint references queue_type(id),
-    event_data text
+    common_data text
 );
 
 

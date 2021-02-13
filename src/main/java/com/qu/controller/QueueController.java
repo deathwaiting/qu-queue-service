@@ -20,8 +20,8 @@ public class QueueController {
     @Path("/type")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Uni<Long> createQueueType(QueueTypeDto queueTemplate){
-        return queueMgrService.createQueueType(queueTemplate);
+    public Uni<Long> createQueueType(QueueTypeDto queueType){
+        return queueMgrService.createQueueType(queueType);
     }
 
 
@@ -32,4 +32,13 @@ public class QueueController {
         return queueMgrService.getAllEventHandlers();
     }
 
+
+
+    @GET
+    @Path("/type")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Multi<QueueTypeDto> getQueueTypes(){
+        return queueMgrService.getQueueTypes();
+    }
 }

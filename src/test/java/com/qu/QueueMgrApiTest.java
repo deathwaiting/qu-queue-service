@@ -1,6 +1,7 @@
 package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.dto.QueueTypeDto;
 import com.qu.services.QueueEventPhase;
 import com.qu.services.queue.event.QueueEventHandlersImpl;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
@@ -114,6 +115,28 @@ public class QueueMgrApiTest {
         assertEquals(1, newEventsHandlers.size());
         assertEquals(DUMMY_HANDLER, newEventsHandlers.get(0).name);
         assertEquals(ENQUEUE_ACTION.name(), newEventsHandlers.get(0).eventData);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void getQueueTypesList(){
+        var response =
+                given()
+                    .when()
+                    .auth().oauth2(adminJwt)
+                    .get("/queue/type")
+                    .then()
+                    .statusCode(200)
+                    .body(notNullValue())
+                    .extract()
+                    .body()
+                    .as(new TypeRef<List<QueueTypeDto>>(){});
+
+        assertEquals(1, response.size());
+        assertEquals(2, response.get(0).eventHandlers.size());
     }
 
 

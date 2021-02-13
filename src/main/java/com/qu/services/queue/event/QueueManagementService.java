@@ -9,4 +9,6 @@ public interface QueueManagementService {
     Multi<QueueEventHandlerInfo<?>> getAllEventHandlers();
 
     Uni<Long> createQueueType(QueueTypeDto queueTemplate);
+
+    Multi<QueueTypeDto> getQueueTypes();
 }

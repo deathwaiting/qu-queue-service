@@ -1,39 +1,36 @@
 package com.qu.services.queue.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qu.commons.constants.Roles;
 import com.qu.dto.QueueEventDto;
 import com.qu.dto.QueueTypeDto;
 import com.qu.exceptions.RuntimeBusinessException;
-import com.qu.persistence.entities.QueueEventDefinition;
+import com.qu.persistence.entities.QueueEventHandler;
 import com.qu.persistence.entities.QueueType;
 import com.qu.services.QueueEventPhase;
 import com.qu.services.SecurityService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
-import com.qu.utils.Utils;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import org.jboss.logging.Logger;
-import org.jboss.logmanager.LogManager;
 
 import javax.annotation.security.RolesAllowed;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
-import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
-import static com.qu.exceptions.Errors.E$GEN$00001;
-import static com.qu.exceptions.Errors.E$QUE$00001;
+import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
 import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 
 @ApplicationScoped
@@ -67,7 +64,6 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     @Transactional
     public Uni<Long> createQueueType(QueueTypeDto dto) {
         validateQueueType(dto);
-//        Long id = dto.id;
         return  ofNullable(dto.id)
                 .map(id -> QueueType.<QueueType>findById(id))
                 .orElse(Uni.createFrom().item(new QueueType()))
@@ -79,6 +75,56 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .map(QueueType::getId);
     }
 
+
+
+    @Override
+    @RolesAllowed(QUEUE_ADMIN)
+    public Multi<QueueTypeDto> getQueueTypes() {
+        var orgId = securityService.getUserOrganization();
+        return QueueType
+                .getByOrganization(orgId)
+                .map(this::toQueueTypeDto);
+    }
+
+
+
+
+    private QueueTypeDto toQueueTypeDto(QueueType type) {
+        var dto = new QueueTypeDto();
+        dto.id = type.getId();
+        dto.defaultAutoAcceptEnabled = type.getDefaultAutoAcceptEnabled();
+        dto.defaultMaxSize = type.getDefaultMaxSize();
+        dto.defaultHoldEnabled = type.getDefaultHoldEnabled();
+        dto.name = type.getName();
+        dto.eventHandlers = createEventHandlersDtoList(type);
+        return dto;
+    }
+
+
+
+    private List<QueueEventDto> createEventHandlersDtoList(QueueType type) {
+        return type
+                .getEventHandlers()
+                .stream()
+                .map(this::toEventHandlerDto)
+                .collect(toList());
+    }
+
+
+
+
+    private QueueEventDto toEventHandlerDto(QueueEventHandler eventDef) {
+         var dto = new QueueEventDto();
+         dto.eventHandlerName = eventDef.getName();
+         dto.type = QueueEventPhase.valueOf(eventDef.getEventType());
+        try {
+            dto.commonParams = objectMapper.readValue(eventDef.getCommonData(), new TypeReference<Map<String, ?>>() {});
+        } catch (JsonProcessingException e) {
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00004, eventDef.getCommonData());
+        }
+        return dto;
+    }
 
 
     private void validateQueueType(QueueTypeDto dto) {
@@ -119,7 +165,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
 
-    private Set<QueueEventDefinition> createEventHandlers(QueueType entity, QueueTypeDto dto) {
+    private Set<QueueEventHandler> createEventHandlers(QueueType entity, QueueTypeDto dto) {
         return dto
                 .eventHandlers
                 .stream()
@@ -129,17 +175,17 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
 
-    private QueueEventDefinition createEventHandlerDto(QueueType queueType, QueueEventDto dto) {
+    private QueueEventHandler createEventHandlerDto(QueueType queueType, QueueEventDto dto) {
         try {
             var commonParams = objectMapper.writeValueAsString(dto.commonParams);
             var type =
                     ofNullable(dto.type)
                     .map(QueueEventPhase::name)
                     .orElseThrow(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00001));
-            var entity = new QueueEventDefinition();
+            var entity = new QueueEventHandler();
             entity.setQueueType(queueType);
             entity.setEventType(type);
-            entity.setEventData(commonParams);
+            entity.setCommonData(commonParams);
             entity.setName(dto.eventHandlerName);
             return entity;
         } catch (JsonProcessingException e) {
@@ -149,11 +195,13 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     }
 
 
+
+
     private Uni<Void> clearQueueTypeEvents(QueueType type) {
         return   Multi
                 .createFrom()
                 .iterable(type.getEventHandlers())
-                .map(QueueEventDefinition.class::cast)
+                .map(QueueEventHandler.class::cast)
                 .call(handler -> handler.delete())
                 .collectItems()
                 .asList()

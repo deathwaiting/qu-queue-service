@@ -13,9 +13,9 @@ import static javax.persistence.GenerationType.IDENTITY;
 
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "queue_event_definition")
+@Table(name = "queue_event_handler")
 @Data
-public class QueueEventDefinition extends PanacheEntityBase {
+public class QueueEventHandler extends PanacheEntityBase {
 
     @Id
     @GeneratedValue(strategy = IDENTITY)
@@ -27,8 +27,8 @@ public class QueueEventDefinition extends PanacheEntityBase {
     @Column(name = "event_type")
     public String eventType;
 
-    @Column(name = "event_data")
-    public String eventData;
+    @Column(name = "common_data")
+    public String commonData;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "queue_type_id")
