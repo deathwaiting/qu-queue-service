@@ -1,6 +1,7 @@
 package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qu.dto.QueueDetailsDto;
 import com.qu.dto.QueueDto;
 import com.qu.dto.QueueListResponse;
 import com.qu.dto.QueueTypeDto;
@@ -194,6 +195,27 @@ public class QueueMgrApiTest {
                         .extract()
                         .body()
                         .as(QueueListResponse.class);
+
+        assertEquals(2, response.queues.size());
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void getQueuesDetails(){
+        var response =
+                given()
+                        .when()
+                        .auth().oauth2(serverJwt)
+                        .get("/queue/9999")
+                        .then()
+                        .statusCode(200)
+                        .body(notNullValue())
+                        .extract()
+                        .body()
+                        .as(QueueDetailsDto.class);
 
         assertEquals(2, response.queues.size());
     }

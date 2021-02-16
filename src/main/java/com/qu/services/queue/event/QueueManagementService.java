@@ -1,9 +1,6 @@
 package com.qu.services.queue.event;
 
-import com.qu.dto.QueueDto;
-import com.qu.dto.QueueListParams;
-import com.qu.dto.QueueListResponse;
-import com.qu.dto.QueueTypeDto;
+import com.qu.dto.*;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -18,4 +15,6 @@ public interface QueueManagementService {
     Uni<Long> createQueue(QueueDto queue);
 
     Uni<QueueListResponse>  getQueueList(QueueListParams params);
+
+    Uni<QueueDetailsDto> getQueue(Long id);
 }

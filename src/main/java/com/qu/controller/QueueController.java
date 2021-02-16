@@ -1,13 +1,11 @@
 package com.qu.controller;
 
-import com.qu.dto.QueueDto;
-import com.qu.dto.QueueListParams;
-import com.qu.dto.QueueListResponse;
-import com.qu.dto.QueueTypeDto;
+import com.qu.dto.*;
 import com.qu.services.queue.event.QueueManagementService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.inject.Inject;
@@ -66,5 +64,15 @@ public class QueueController {
         params.pageNum = pageIndex;
         params.pageSize = pageCount;
         return queueMgrService.getQueueList(params);
+    }
+
+
+
+    @GET()
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Uni<QueueDetailsDto> getQueue(@RestPath Long id){
+        return queueMgrService.getQueue(id);
     }
 }

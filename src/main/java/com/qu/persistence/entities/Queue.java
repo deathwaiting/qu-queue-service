@@ -13,6 +13,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static javax.persistence.CascadeType.ALL;
@@ -53,10 +54,13 @@ public class Queue extends PanacheEntityBase {
     @ToString.Exclude
     public QueueType type;
 
+
+
     @OneToMany(mappedBy = "queue", fetch = LAZY, cascade = ALL)
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     public Set<QueueRequest> requests;
+
 
 
     @OneToMany(mappedBy = "queue", fetch = LAZY)
@@ -65,13 +69,14 @@ public class Queue extends PanacheEntityBase {
     public Set<QueueAction> actions;
 
 
+
     public static Uni<QueueListPage> getQueuesByOrganization(Long orgId, QueueListParams params) {
         var query=
                 Queue
                 .find("SELECT qu FROM Queue qu " +
                                 " LEFT JOIN qu.type type " +
                                 " LEFT JOIN FETCH qu.actions actions " +
-                                " WHERE type.organizationId = :orgId" +
+                                " WHERE type.organizationId = :orgId " +
                                 " ORDER BY qu.startTime desc "
                     , Map.of("orgId", orgId))
                 .page(params.pageNum, params.pageSize);
@@ -86,6 +91,26 @@ public class Queue extends PanacheEntityBase {
         return data
                 .chain(rows -> totalPgCount.pageCount().map(cnt -> new QueueListPage(cnt, rows)));
     }
+
+
+    public static Uni<Queue> getQueueFullDetailsById(Long id, Long orgId) {
+        return Queue
+                .find( "SELECT DISTINCT qu FROM Queue qu " +
+                                " LEFT JOIN FETCH qu.type type " +
+                                " LEFT JOIN FETCH qu.actions actions " +
+                                " LEFT JOIN FETCH qu.requests requests " +
+                                " LEFT JOIN FETCH requests.turn turn " +
+                                " LEFT JOIN FETCH turn.leave leave " +
+                                " LEFT JOIN FETCH turn.turnMove move " +
+                                " LEFT JOIN FETCH turn.pick pick " +
+                                " WHERE type.organizationId = :orgId " +
+                                " AND qu.id = :id " +
+                                " ORDER BY qu.startTime desc "
+                        , Map.of("id", id , "orgId", orgId))
+                .singleResult();
+    }
+
+
 
 
 

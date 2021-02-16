@@ -7,10 +7,9 @@ import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueStatus;
 import com.qu.dto.*;
 import com.qu.exceptions.RuntimeBusinessException;
+import com.qu.mappers.QueueDtoMapper;
+import com.qu.persistence.entities.*;
 import com.qu.persistence.entities.Queue;
-import com.qu.persistence.entities.QueueAction;
-import com.qu.persistence.entities.QueueEventHandler;
-import com.qu.persistence.entities.QueueType;
 import com.qu.services.QueueEventPhase;
 import com.qu.services.SecurityService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
@@ -24,10 +23,7 @@ import javax.inject.Inject;
 import javax.transaction.Transactional;
 
 import java.time.ZoneId;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
 import static com.qu.commons.constants.Roles.QUEUE_MANAGER;
@@ -45,6 +41,7 @@ import static java.util.stream.Collectors.*;
 public class QueueManagementServiceImpl implements QueueManagementService{
 
     private static final Logger LOG = Logger.getLogger(QueueManagementServiceImpl.class);
+    private static final ZoneId UTC = ZoneId.of("UTC");;
 
     @Inject
     QueueEventHandlers handlers;
@@ -54,6 +51,9 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    QueueDtoMapper queueDtoMapper;
 
     @Override
     @RolesAllowed(QUEUE_ADMIN)
@@ -130,6 +130,111 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
 
+    @Override
+    @RolesAllowed(QUEUE_MANAGER)
+    @Transactional
+    public Uni<QueueDetailsDto> getQueue(Long id) {
+        Long orgId = securityService.getUserOrganization();
+        return Queue
+                .getQueueFullDetailsById(id, orgId)
+                .map(this::toQueueDetailsDto);
+    }
+
+
+
+
+    private QueueDetailsDto toQueueDetailsDto(Queue queue) {
+        var actions = getQueueActions(queue);
+        var requests = getQueueRequests(queue);
+        var baseInfo = toQueueDto(queue);
+        var turns = getQueueTurns(queue);
+        var detailedDto = queueDtoMapper.toQueueDetailedDto(baseInfo);
+        detailedDto.actions = actions;
+        detailedDto.requests = requests;
+        detailedDto.turns = turns;
+        return detailedDto;
+    }
+
+
+
+
+    private List<QueueTurnDto> getQueueTurns(Queue queue) {
+        return queue
+                .getRequests()
+                .stream()
+                .map(QueueRequest::getTurn)
+                .filter(Objects::nonNull)
+                .map(this::toQueueTurnDto)
+                .collect(toList());
+    }
+
+
+
+    private QueueTurnDto toQueueTurnDto(QueueTurn turn) {
+        var dto = new QueueTurnDto();
+        dto.acceptorId = turn.getRequest().getAcceptorId();
+        dto.clientDetails = parseJsonAsMap(turn.getRequest().getClientDetails());
+        dto.number = turn.getQueueNumber();
+        dto.clientId = turn.getRequest().getClientId();
+        dto.turnAfter = ofNullable(turn.getTurnMove()).map(QueueTurnMove::getInsertedBeforeTurnId);
+        ofNullable(turn.getPick()).map(QueueTurnPick::getSkipTime).ifPresent(time -> dto.skipTime = time);
+        ofNullable(turn.getPick()).map(QueueTurnPick::getSkipReason).ifPresent(reason -> dto.skipReason = reason);
+        ofNullable(turn.getPick()).map(QueueTurnPick::getPickTime).ifPresent(time -> dto.pickTime = time);
+        ofNullable(turn.getPick()).map(QueueTurnPick::getServerId).ifPresent(picker -> dto.picker = picker);
+        ofNullable(turn.getLeave()).map(QueueLeave::getLeaveTime).ifPresent(time -> dto.leaveTime = time.atZone(UTC));
+        ofNullable(turn.getEnqueueTime()).ifPresent( time -> dto.enqueueTime = time.atZone(UTC));
+        ofNullable(turn.getPick())
+                .map(QueueTurnPick::getServerDetails)
+                .map(this::parseJsonAsMap)
+                .ifPresent(details -> dto.pickerDetails = details);
+        return dto;
+    }
+
+
+
+    private List<QueueRequestDto> getQueueRequests(Queue queue) {
+        return queue
+                .getRequests()
+                .stream()
+                .sorted(Comparator.comparing(QueueRequest::getRequestTime))
+                .map(this::toQueueRequestDto)
+                .collect(toList());
+    }
+
+
+
+    private QueueRequestDto toQueueRequestDto(QueueRequest request) {
+        var dto = new QueueRequestDto();
+        dto.clientId = request.getClientId();
+        dto.clientDetails = parseJsonAsMap(request.getClientDetails());
+        dto.requestTime = request.requestTime.atZone(UTC);
+        dto.refused = ofNullable(request.getRefused()).orElse(false);
+        dto.refuser = request.getAcceptorId();
+        ofNullable(request.responseTime).ifPresent(time -> dto.responseTime = time.atZone(UTC));
+        return dto;
+    }
+
+
+
+    private List<QueueActionDto> getQueueActions(Queue queue) {
+        return queue
+                .getActions()
+                .stream()
+                .map(this::toQueueActionDto)
+                .collect(toList());
+    }
+
+
+
+
+    private QueueActionDto toQueueActionDto(QueueAction queueAction) {
+        var dto = new QueueActionDto();
+        ofNullable(queueAction.actionType).map(QueueActions::valueOf).ifPresent(action -> dto.action = action);
+        dto.actionTime = queueAction.actionTime.atZone(UTC);
+        return dto;
+    }
+
+
 
     private QueueListResponse toQueueListResponse(Queue.QueueListPage page) {
         var data = page.page.stream().map(this::toQueueDto).collect(toList());
@@ -142,13 +247,13 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     private QueueDto toQueueDto(Queue entity) {
         var dto = new QueueDto();
         dto.autoAcceptEnabled = entity.getAutoAcceptEnabled();
-        dto.endTime = entity.getEndTime().atZone(ZoneId.of("UTC"));
+        dto.endTime = entity.getEndTime().atZone(UTC);
         dto.id = entity.getId();
         dto.name = entity.getName();
         dto.holdEnabled = entity.getHoldEnabled();
         dto.maxSize = entity.getMaxSize();
         dto.queueTypeId = entity.getType().getId();
-        dto.startTime = entity.getStartTime().atZone(ZoneId.of("UTC"));
+        dto.startTime = entity.getStartTime().atZone(UTC);
         dto.status = getQueueStatus(entity);
         return dto;
     }
@@ -170,8 +275,8 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
     private Queue createQueueEntity(QueueDto queue, QueueType type) {
-        var endTime = queue.endTime.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
-        var startTime = queue.startTime.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
+        var endTime = queue.endTime.withZoneSameInstant(UTC).toLocalDateTime();
+        var startTime = queue.startTime.withZoneSameInstant(UTC).toLocalDateTime();
         var autoAccept = ofNullable(queue.autoAcceptEnabled).orElse(type.getDefaultAutoAcceptEnabled());
         var holdAccept = ofNullable(queue.holdEnabled).orElse(type.getDefaultHoldEnabled());
         var maxSize =  ofNullable(queue.maxSize).orElse(type.getDefaultMaxSize());
@@ -222,17 +327,25 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
     private QueueEventDto toEventHandlerDto(QueueEventHandler eventDef) {
-         var dto = new QueueEventDto();
-         dto.eventHandlerName = eventDef.getName();
-         dto.type = QueueEventPhase.valueOf(eventDef.getEventType());
-        try {
-            dto.commonParams = objectMapper.readValue(eventDef.getCommonData(), new TypeReference<Map<String, ?>>() {});
-        } catch (JsonProcessingException e) {
-            LOG.error(e,e);
-            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00004, eventDef.getCommonData());
-        }
+        var dto = new QueueEventDto();
+        dto.eventHandlerName = eventDef.getName();
+        dto.type = QueueEventPhase.valueOf(eventDef.getEventType());
+        var commonData = eventDef.getCommonData();
+        dto.commonParams = parseJsonAsMap(commonData);
         return dto;
     }
+
+
+
+    private Map<String, ?> parseJsonAsMap(String commonData) {
+        try {
+             return objectMapper.readValue(commonData, new TypeReference<Map<String, ?>>() {});
+        } catch (JsonProcessingException e) {
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00004, commonData);
+        }
+    }
+
 
 
     private void validateQueueType(QueueTypeDto dto) {
