@@ -12,7 +12,8 @@ public enum Errors {
     E$USR$00003("Invalid invitation token!"),
 
     E$QUE$00001("Failed to create Queue type! cause: %s"),
-    E$QUE$00002("Queue type doesn't exists!")
+    E$QUE$00002("Queue type doesn't exists!"),
+    E$QUE$00003("Queue with Id[%d] doesn't exists!")
     ;
 
     private String msg;

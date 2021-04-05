@@ -63,9 +63,11 @@ create table queue_request(
     client_id text,
     request_time timestamp not null,
     response_time timestamp ,
+    skip_time timestamp ,
     client_details text,
     queue_id bigint references queue(id),
-    refused boolean default false
+    refused boolean default false,
+    acceptor_id text
 );
 
 
@@ -100,5 +102,6 @@ create table queue_turn_pick(
     skip_time timestamp not null,
     skip_reason varchar(1000),
     server_id text,
-    server_details text
+    server_details text,
+    queue_turn_id bigint not null references public.queue_turn(id)
 );

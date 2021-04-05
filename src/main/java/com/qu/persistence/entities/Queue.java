@@ -107,7 +107,7 @@ public class Queue extends PanacheEntityBase {
                                 " AND qu.id = :id " +
                                 " ORDER BY qu.startTime desc "
                         , Map.of("id", id , "orgId", orgId))
-                .singleResult();
+                .firstResult();
     }
 
 

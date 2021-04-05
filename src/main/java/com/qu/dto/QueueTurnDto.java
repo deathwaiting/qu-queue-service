@@ -3,13 +3,16 @@ package com.qu.dto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
 
 import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Optional;
 
 @JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+@Data
 public class QueueTurnDto {
+    public Long id;
     public String clientId;
     public Map<String,?> clientDetails;
     public ZonedDateTime enqueueTime;
@@ -22,5 +25,5 @@ public class QueueTurnDto {
     public String picker;
     public Map<String,?> pickerDetails;
     @JsonIgnore
-    public Optional<Long> turnAfter;
+    public Long turnAfter;
 }

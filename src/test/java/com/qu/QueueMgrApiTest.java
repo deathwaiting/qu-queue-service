@@ -1,10 +1,7 @@
 package com.qu;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qu.dto.QueueDetailsDto;
-import com.qu.dto.QueueDto;
-import com.qu.dto.QueueListResponse;
-import com.qu.dto.QueueTypeDto;
+import com.qu.dto.*;
 import com.qu.services.queue.event.QueueEventHandlersImpl;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import com.qu.test.utils.DaoUtil;
@@ -31,6 +28,7 @@ import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static com.qu.test.utils.TestUtils.readTestResourceAsString;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static java.util.stream.Collectors.toList;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -110,14 +108,14 @@ public class QueueMgrApiTest {
                         , Map.of("id", response));
 
         var newEventsHandlers =
-                dao.runQuery("select * from queue_event_definition where queue_type_id = :id"
+                dao.runQuery("select * from queue_event_handler where queue_type_id = :id"
                         , QueueMgrApiTest.EventHandlerRow.class
                         , Map.of("id", response));
 
         assertEquals(name, newTemplate.name);
         assertEquals(1, newEventsHandlers.size());
         assertEquals(DUMMY_HANDLER, newEventsHandlers.get(0).name);
-        assertEquals(ENQUEUE_ACTION.name(), newEventsHandlers.get(0).eventData);
+        assertEquals(ENQUEUE_ACTION.name(), newEventsHandlers.get(0).eventType);
     }
 
 
@@ -209,7 +207,7 @@ public class QueueMgrApiTest {
                 given()
                         .when()
                         .auth().oauth2(serverJwt)
-                        .get("/queue/9999")
+                        .get("/queue/99934")
                         .then()
                         .statusCode(200)
                         .body(notNullValue())
@@ -217,7 +215,10 @@ public class QueueMgrApiTest {
                         .body()
                         .as(QueueDetailsDto.class);
 
-        assertEquals(2, response.queues.size());
+        assertEquals(3, response.turns.size());
+        var expectedTurns = List.of("ABC123", "ABC125", "ABC124");
+        var returnedTurns = response.turns.stream().map(QueueTurnDto::getNumber).collect(toList());
+        assertEquals(expectedTurns, returnedTurns);
     }
 
 

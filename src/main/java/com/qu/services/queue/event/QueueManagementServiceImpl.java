@@ -22,6 +22,8 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -31,8 +33,11 @@ import static com.qu.commons.enums.QueueActions.*;
 import static com.qu.commons.enums.QueueStatus.INACTIVE;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
-import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static java.math.BigDecimal.ONE;
+import static java.math.RoundingMode.FLOOR;
+import static java.util.Comparator.comparing;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.*;
 
@@ -137,7 +142,12 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         Long orgId = securityService.getUserOrganization();
         return Queue
                 .getQueueFullDetailsById(id, orgId)
-                .map(this::toQueueDetailsDto);
+                .onItem()
+                    .ifNotNull()
+                    .transform(this::toQueueDetailsDto)
+                .onItem()
+                    .ifNull()
+                    .failWith(new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, id));
     }
 
 
@@ -165,18 +175,36 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .map(QueueRequest::getTurn)
                 .filter(Objects::nonNull)
                 .map(this::toQueueTurnDto)
+                .sorted(comparing(this::getTurnOrderingScore))
                 .collect(toList());
+    }
+
+
+
+    private BigDecimal getTurnOrderingScore(QueueTurnDto turn) {
+        return ofNullable(turn)
+                    .map(QueueTurnDto::getTurnAfter)
+                    .map(turnAfter -> calcOrderScore(turn))
+                    .orElse(new BigDecimal(turn.getId()));
+    }
+
+
+
+    private BigDecimal calcOrderScore(QueueTurnDto turn) {
+        var inverseTime = ONE.divide(new BigDecimal(turn.enqueueTime.toEpochSecond()), 10, FLOOR);
+        return new BigDecimal(turn.turnAfter).subtract(inverseTime);
     }
 
 
 
     private QueueTurnDto toQueueTurnDto(QueueTurn turn) {
         var dto = new QueueTurnDto();
+        dto.id = turn.getId();
         dto.acceptorId = turn.getRequest().getAcceptorId();
         dto.clientDetails = parseJsonAsMap(turn.getRequest().getClientDetails());
         dto.number = turn.getQueueNumber();
         dto.clientId = turn.getRequest().getClientId();
-        dto.turnAfter = ofNullable(turn.getTurnMove()).map(QueueTurnMove::getInsertedBeforeTurnId);
+        dto.turnAfter = ofNullable(turn.getTurnMove()).map(QueueTurnMove::getInsertedBeforeTurnId).orElse(null);
         ofNullable(turn.getPick()).map(QueueTurnPick::getSkipTime).ifPresent(time -> dto.skipTime = time);
         ofNullable(turn.getPick()).map(QueueTurnPick::getSkipReason).ifPresent(reason -> dto.skipReason = reason);
         ofNullable(turn.getPick()).map(QueueTurnPick::getPickTime).ifPresent(time -> dto.pickTime = time);
@@ -196,7 +224,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         return queue
                 .getRequests()
                 .stream()
-                .sorted(Comparator.comparing(QueueRequest::getRequestTime))
+                .sorted(comparing(QueueRequest::getRequestTime))
                 .map(this::toQueueRequestDto)
                 .collect(toList());
     }
@@ -207,10 +235,12 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         var dto = new QueueRequestDto();
         dto.clientId = request.getClientId();
         dto.clientDetails = parseJsonAsMap(request.getClientDetails());
-        dto.requestTime = request.requestTime.atZone(UTC);
+        dto.requestTime = request.getRequestTime().atZone(UTC);
         dto.refused = ofNullable(request.getRefused()).orElse(false);
         dto.refuser = request.getAcceptorId();
-        ofNullable(request.responseTime).ifPresent(time -> dto.responseTime = time.atZone(UTC));
+        ofNullable(request.getResponseTime())
+                .map(time -> time.atZone(UTC))
+                .ifPresent(dto::setResponseTime);
         return dto;
     }
 
@@ -229,8 +259,8 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
     private QueueActionDto toQueueActionDto(QueueAction queueAction) {
         var dto = new QueueActionDto();
-        ofNullable(queueAction.actionType).map(QueueActions::valueOf).ifPresent(action -> dto.action = action);
-        dto.actionTime = queueAction.actionTime.atZone(UTC);
+        ofNullable(queueAction.getActionType()).map(QueueActions::valueOf).ifPresent(action -> dto.action = action);
+        dto.actionTime = queueAction.getActionTime().atZone(UTC);
         return dto;
     }
 
@@ -264,7 +294,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         return entity
                 .getActions()
                 .stream()
-                .sorted(Comparator.comparing(QueueAction::getActionTime).reversed())
+                .sorted(comparing(QueueAction::getActionTime).reversed())
                 .map(QueueAction::getActionType)
                 .map(QueueActions::valueOf)
                 .filter(action -> Set.of(SUSPEND, END, START).contains(action))

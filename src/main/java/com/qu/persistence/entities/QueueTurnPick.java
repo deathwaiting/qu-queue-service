@@ -26,7 +26,7 @@ public class QueueTurnPick extends PanacheEntityBase {
     @Column(name = "pick_time")
     public ZonedDateTime pickTime;
 
-    @Column(name = "skip_name")
+    @Column(name = "skip_time")
     public ZonedDateTime skipTime;
 
     @Column(name = "skip_reason")
