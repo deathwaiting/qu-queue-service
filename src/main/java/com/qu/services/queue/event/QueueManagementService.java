@@ -1,5 +1,6 @@
 package com.qu.services.queue.event;
 
+import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import io.smallrye.mutiny.Multi;
@@ -17,4 +18,6 @@ public interface QueueManagementService {
     Uni<QueueListResponse>  getQueueList(QueueListParams params);
 
     Uni<QueueDetailsDto> getQueue(Long id);
+
+    Uni<Void> setQueueStatus(Long id, QueueActionType action);
 }

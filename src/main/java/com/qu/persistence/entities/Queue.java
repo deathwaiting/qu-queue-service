@@ -112,6 +112,17 @@ public class Queue extends PanacheEntityBase {
 
 
 
+    public static Uni<Queue> findByIdAndOrganizationId(Long id, Long orgId) {
+        return Queue
+                .find( "SELECT qu FROM Queue qu " +
+                                " LEFT JOIN FETCH qu.type type " +
+                                " LEFT JOIN FETCH qu.actions actions " +
+                                " WHERE type.organizationId = :orgId " +
+                                " AND qu.id = :id " +
+                                " ORDER BY qu.startTime desc "
+                        , Map.of("id", id , "orgId", orgId))
+                .firstResult();
+    }
 
 
     public static class QueueListPage{

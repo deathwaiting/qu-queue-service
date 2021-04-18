@@ -2,14 +2,14 @@ package com.qu.commons.enums;
 
 import lombok.Getter;
 
-import static com.qu.commons.enums.QueueStatus.*;
+import static com.qu.commons.enums.QueueActionType.*;
 
 @Getter
 public enum QueueActions {
-    SUSPEND(SUSPENDED), START(ACTIVE), END(ENDED);
+    SUSPEND(HOLD), START(QueueActionType.START), END(QueueActionType.END);
 
-    private QueueStatus status;
-    QueueActions(QueueStatus status){
+    private QueueActionType status;
+    QueueActions(QueueActionType status){
         this.status = status;
     }
 }

@@ -25,9 +25,11 @@ dependencies {
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-reactive-pg-client")
     implementation("io.quarkus:quarkus-oidc")
+    implementation("org.hibernate.validator:hibernate-validator")
 
 
     compileOnly("org.projectlombok:lombok:1.18.16")
+    compileOnly("javax.validation:validation-api:2.0.1.Final")
     testCompileOnly("org.projectlombok:lombok:1.18.16")
     annotationProcessor("org.projectlombok:lombok:1.18.16")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.16")

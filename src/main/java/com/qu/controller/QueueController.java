@@ -1,5 +1,6 @@
 package com.qu.controller;
 
+import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
 import com.qu.services.queue.event.QueueManagementService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
@@ -9,6 +10,7 @@ import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
 import javax.inject.Inject;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
@@ -74,5 +76,12 @@ public class QueueController {
     @Consumes(MediaType.APPLICATION_JSON)
     public Uni<QueueDetailsDto> getQueue(@RestPath Long id){
         return queueMgrService.getQueue(id);
+    }
+
+
+    @POST
+    @Path("/{id}/action")
+    public Uni<Void> setQueueStatus(@NotNull @RestPath("id")Long id, @NotNull @RestQuery("action") QueueActionType action){
+        return queueMgrService.setQueueStatus(id, action);
     }
 }

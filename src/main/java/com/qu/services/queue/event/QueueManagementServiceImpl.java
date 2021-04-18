@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
-import com.qu.commons.enums.QueueStatus;
+import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
@@ -23,21 +23,20 @@ import javax.inject.Inject;
 import javax.transaction.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.*;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
 import static com.qu.commons.constants.Roles.QUEUE_MANAGER;
 import static com.qu.commons.enums.QueueActions.*;
-import static com.qu.commons.enums.QueueStatus.INACTIVE;
+import static com.qu.commons.enums.QueueActionType.CREATE;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static java.math.BigDecimal.ONE;
 import static java.math.RoundingMode.FLOOR;
+import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparing;
-import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.*;
 
@@ -151,6 +150,49 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     }
 
 
+
+    @Override
+    @Transactional
+    public Uni<Void> setQueueStatus(Long id, QueueActionType action) {
+        Long orgId = securityService.getUserOrganization();
+        return Queue
+                .findByIdAndOrganizationId(id, orgId)
+                    .onItem().ifNull().failWith(() -> new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, id))
+                .onItem().ifNotNull()
+                    .invoke(qu -> validateNewAction(qu, action))
+                    .map(qu -> createQueueAction(qu, action))
+                    .flatMap(QueueAction::persistAndFlush);
+    }
+
+
+
+    private QueueAction createQueueAction(Queue qu, QueueActionType actionType) {
+        var action = new QueueAction();
+        action.setActionType(actionType.name());
+        action.setQueue(qu);
+        return action;
+    }
+
+
+
+    private void validateNewAction(Queue qu, QueueActionType action) {
+        var lastAction = getLastAction(qu);
+        if(!lastAction.canHaveNextStatusOf(action)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00004, lastAction.name(), action.name());
+        }
+    }
+
+
+
+    private QueueActionType getLastAction(Queue qu) {
+        return ofNullable(qu.getActions())
+                .orElse(emptySet())
+                .stream()
+                .max(comparing(QueueAction::getActionTime))
+                .map(QueueAction::getActionType)
+                .map(QueueActionType::valueOf)
+                .orElse(CREATE);
+    }
 
 
     private QueueDetailsDto toQueueDetailsDto(Queue queue) {
@@ -290,7 +332,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
 
-    private QueueStatus getQueueStatus(Queue entity) {
+    private QueueActionType getQueueStatus(Queue entity) {
         return entity
                 .getActions()
                 .stream()
@@ -300,7 +342,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .filter(action -> Set.of(SUSPEND, END, START).contains(action))
                 .map(QueueActions::getStatus)
                 .findFirst()
-                .orElse(INACTIVE);
+                .orElse(CREATE);
     }
 
 

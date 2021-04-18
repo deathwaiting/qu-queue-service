@@ -28,12 +28,12 @@ import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static com.qu.test.utils.TestUtils.readTestResourceAsString;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @Blocking       //we need this to run jdbi with jdbc database connection for some reason
@@ -223,6 +223,35 @@ public class QueueMgrApiTest {
 
 
 
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void addQueueAction(){
+        var id = 99934L;
+        var response =
+                given()
+                    .when()
+                    .contentType(JSON)
+                    .auth().oauth2(adminJwt)
+                    .post("/queue/{id}/action?action=END", id)
+                    .then()
+                    .statusCode(204);
+
+        var row =
+                dao
+                    .getFirstRow("SELECT * FROM QUEUE_ACTIONS" +
+                                    " WHERE queue_id = :id" +
+                                    " order by action_time desc"
+                            , QueueActionRow.class
+                            , Map.of("id", id));
+        assertNotNull(row.actionTime);
+        assertNotNull(row.id);
+        assertEquals(id, row.queueId);
+        assertEquals("END", row.actionType);
+    }
+
+
+
     private String createQueueRequest() {
         return createObjectBuilder()
                 .add("autoAcceptEnabled", true)
@@ -299,6 +328,15 @@ public class QueueMgrApiTest {
         public Integer maxSize;
         public LocalDateTime startTime;
         public LocalDateTime endTime;
+    }
+
+
+    @Data
+    public static class QueueActionRow{
+        public Long id;
+        public String actionType;
+        public Long queueId;
+        public LocalDateTime actionTime;
     }
 }
 
