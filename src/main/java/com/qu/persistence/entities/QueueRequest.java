@@ -2,6 +2,7 @@ package com.qu.persistence.entities;
 
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import io.smallrye.mutiny.Uni;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -11,6 +12,7 @@ import javax.persistence.*;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.Map;
 
 import static javax.persistence.FetchType.LAZY;
 import static javax.persistence.GenerationType.AUTO;
@@ -57,4 +59,14 @@ public class QueueRequest extends PanacheEntityBase {
     @ToString.Exclude
     public QueueTurn turn;
 
+
+    public static Uni<QueueRequest> findFullDataById(Long id){
+        return QueueRequest
+                .find("SELECT req FROM QueueRequest req " +
+                        " LEFT JOIN FETCH req.queue qu " +
+                        " LEFT JOIN FETCH req.turn turn " +
+                        " WHERE req.id = :id"
+                        , Map.of("id", id))
+                .firstResult();
+    }
 }

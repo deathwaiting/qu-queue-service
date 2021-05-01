@@ -1,4 +1,4 @@
-package com.qu.services.queue.event;
+package com.qu.services;
 
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
@@ -20,4 +20,6 @@ public interface QueueManagementService {
     Uni<QueueDetailsDto> getQueue(Long id);
 
     Uni<Void> setQueueStatus(Long id, QueueActionType action);
+
+    Uni<QueueTurnDto> enqueue(QueueTurnCreateDto turn);
 }

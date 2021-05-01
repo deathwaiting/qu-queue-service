@@ -46,7 +46,8 @@ create table queue(
     hold_enabled boolean,
     auto_accept_enabled boolean,
     queue_type_id bigint references queue_type(id),
-    name text not null
+    name text not null,
+    number_generator text
 );
 
 

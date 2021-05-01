@@ -252,6 +252,61 @@ public class QueueMgrApiTest {
 
 
 
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void addTurn(){
+        var id = 99934L;
+        var body = createEnqueueRequestBody();
+        var response =
+                given()
+                    .when()
+                    .contentType(JSON)
+                    .auth().oauth2(serverJwt)
+                    .body(body)
+                    .post("/queue/{id}/turn", id)
+                    .then()
+                    .statusCode(200);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE queue_id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", id));
+        assertNotNull(requestRow.requestTime);
+        assertNotNull(requestRow.responseTime);
+        assertNotNull(requestRow.id);
+        assertEquals(id, requestRow.queueId);
+
+        var turnRow =
+                dao
+                    .getFirstRow("SELECT id, enqueue_time, request_id, queue_number FROM QUEUE_TURN" +
+                                    " WHERE request_id = :id" +
+                                    " order by enqueue_time desc"
+                            , QueueTurnRow.class
+                            , Map.of("id", requestRow.id));
+        assertNotNull(turnRow.enqueueTime);
+        assertEquals("1", turnRow.queueNumber);
+    }
+
+
+
+    private String createEnqueueRequestBody() {
+        return createObjectBuilder()
+                .add("user_id", "dummy_user")
+                .add("user_details",
+                        createObjectBuilder()
+                            .add("email", "dummy@fake.com")
+                            .add("magic_num", 1111)
+                            .build())
+                .build()
+                .toString();
+    }
+
+
+
     private String createQueueRequest() {
         return createObjectBuilder()
                 .add("autoAcceptEnabled", true)
@@ -337,6 +392,30 @@ public class QueueMgrApiTest {
         public String actionType;
         public Long queueId;
         public LocalDateTime actionTime;
+    }
+
+
+    @Data
+    public static class QueueRequestRow{
+        public Long id;
+        public String clientId;
+        public LocalDateTime requestTime;
+        public LocalDateTime responseTime;
+        public LocalDateTime skipTime;
+        public String clientDetails;
+        public Long queueId;
+        public Boolean refused;
+        public String acceptorId;
+    }
+
+
+
+    @Data
+    public static class QueueTurnRow{
+        public Long id;
+        public LocalDateTime enqueueTime;
+        public Long requestId;
+        public String queueNumber;
     }
 }
 

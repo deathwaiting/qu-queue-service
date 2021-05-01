@@ -2,7 +2,7 @@ package com.qu.controller;
 
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
-import com.qu.services.queue.event.QueueManagementService;
+import com.qu.services.QueueManagementService;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -83,5 +83,14 @@ public class QueueController {
     @Path("/{id}/action")
     public Uni<Void> setQueueStatus(@NotNull @RestPath("id")Long id, @NotNull @RestQuery("action") QueueActionType action){
         return queueMgrService.setQueueStatus(id, action);
+    }
+
+
+
+    @POST
+    @Path("/{id}/turn")
+    public Uni<QueueTurnDto> addTurn(@NotNull @RestPath("id")Long id, @NotNull QueueTurnCreateDto turn){
+        turn.queueId = id;
+        return queueMgrService.enqueue(turn);
     }
 }

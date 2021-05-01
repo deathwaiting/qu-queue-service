@@ -1,4 +1,4 @@
-package com.qu.services.queue.event;
+package com.qu.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -6,15 +6,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
+import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
 import com.qu.persistence.entities.*;
 import com.qu.persistence.entities.Queue;
-import com.qu.services.QueueEventPhase;
-import com.qu.services.SecurityService;
+import com.qu.services.queue.event.QueueEventHandlers;
 import com.qu.services.queue.event.model.QueueEventHandlerInfo;
+import com.qu.vertx.events.number_generators.IntegerGenerator;
+import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import io.vertx.mutiny.core.eventbus.EventBus;
+import io.vertx.mutiny.core.eventbus.Message;
+import lombok.Data;
 import org.jboss.logging.Logger;
 
 import javax.annotation.security.RolesAllowed;
@@ -34,6 +39,7 @@ import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.FLOOR;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparing;
@@ -45,7 +51,8 @@ import static java.util.stream.Collectors.*;
 public class QueueManagementServiceImpl implements QueueManagementService{
 
     private static final Logger LOG = Logger.getLogger(QueueManagementServiceImpl.class);
-    private static final ZoneId UTC = ZoneId.of("UTC");;
+    private static final ZoneId UTC = ZoneId.of("UTC");
+    private static final String DEFAULT_QU_NUM_GENERATOR = IntegerGenerator.NAME;
 
     @Inject
     QueueEventHandlers handlers;
@@ -59,13 +66,16 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     @Inject
     QueueDtoMapper queueDtoMapper;
 
+    @Inject
+    EventBus eventBus;
+
     @Override
     @RolesAllowed(QUEUE_ADMIN)
     public Multi<QueueEventHandlerInfo<?>> getAllEventHandlers() {
         var eventHandlers = handlers.getActiveHandlers();
         return Multi
                 .createFrom()
-                .<QueueEventHandlerInfo<?>>iterable(eventHandlers);
+                .iterable(eventHandlers);
     }
 
 
@@ -77,7 +87,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     public Uni<Long> createQueueType(QueueTypeDto dto) {
         validateQueueType(dto);
         return  ofNullable(dto.id)
-                .map(id -> QueueType.<QueueType>findById(id))
+                .map(QueueType::<QueueType>findById)
                 .orElse(Uni.createFrom().item(new QueueType()))
                 .flatMap(entity -> prepareQueueTypeEntity(entity, dto))
                 .flatMap(entity ->
@@ -166,6 +176,81 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
 
+    @Override
+    @RolesAllowed(QUEUE_MANAGER)
+    @Transactional
+    public Uni<QueueTurnDto> enqueue(QueueTurnCreateDto turn) {
+        return createTurnRequest(turn)
+                .map(QueueRequestDto::getId)
+                .flatMap(this::createTurn);
+    }
+
+
+
+    private Uni<QueueTurnDto> createTurn(Long requestId) {
+        return QueueRequest
+                .findFullDataById(requestId)
+                .flatMap(this::getNewQueueNum)
+                .flatMap( this::createTurnEntity)
+                .map(this::toQueueTurnDto);
+    }
+
+
+
+    private Uni<QueueNumber> getNewQueueNum(QueueRequest request) {
+        var quNumGenerator =
+                ofNullable(request)
+                        .map(QueueRequest::getQueue)
+                        .map(Queue::getNumberGenerator)
+                        .orElse(DEFAULT_QU_NUM_GENERATOR);
+        return eventBus
+                .<String>request(quNumGenerator, request)
+                .map(Message::body)
+                .map(num -> new QueueNumber(request,num));
+    }
+
+
+    private Uni<QueueTurn>  createTurnEntity(QueueNumber quNum) {
+        var turn = new QueueTurn(quNum.request, quNum.number);
+        return  turn.persistAndFlush()
+                .onFailure().invoke(LOG::error)
+                .onItem().transformToUni(v -> updateResponseTime(quNum.request, turn))
+                .onItem().transform(v -> turn);
+    }
+
+
+
+    private Uni<Void> updateResponseTime(QueueRequest request, QueueTurn turn) {
+        request.setResponseTime(turn.getEnqueueTime());
+        return request.persistAndFlush();
+    }
+
+
+    private Uni<QueueRequestDto> createTurnRequest(QueueRequestCreateDto turn) {
+        var orgId = securityService.getUserOrganization();
+        return Queue
+                .findByIdAndOrganizationId(turn.queueId, orgId)
+                    .onItem().ifNull()
+                        .failWith(() -> new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, turn.queueId))
+                    .onItem().ifNotNull()
+                        .transformToUni(qu -> createTurnRequestEntity(turn, qu))
+                        .map(this::toQueueRequestDto);
+    }
+
+
+
+    private Uni<QueueRequest> createTurnRequestEntity(QueueRequestCreateDto request, Queue qu) {
+        var clientDetails = writeMapAsJson(request.clientDetails);
+        var entity = new QueueRequest();
+        entity.setQueue(qu);
+        entity.setClientId(request.clientId);
+        entity.setClientDetails(clientDetails);
+        return entity
+                .persistAndFlush()
+                .chain(() -> Uni.createFrom().item(entity));
+    }
+
+
     private QueueAction createQueueAction(Queue qu, QueueActionType actionType) {
         var action = new QueueAction();
         action.setActionType(actionType.name());
@@ -227,7 +312,10 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         return ofNullable(turn)
                     .map(QueueTurnDto::getTurnAfter)
                     .map(turnAfter -> calcOrderScore(turn))
-                    .orElse(new BigDecimal(turn.getId()));
+                    .or( () -> ofNullable(turn)
+                                .map(QueueTurnDto::getId)
+                                .map(BigDecimal::new))
+                    .orElse(ZERO);
     }
 
 
@@ -280,6 +368,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         dto.requestTime = request.getRequestTime().atZone(UTC);
         dto.refused = ofNullable(request.getRefused()).orElse(false);
         dto.refuser = request.getAcceptorId();
+        dto.id = request.getId();
         ofNullable(request.getResponseTime())
                 .map(time -> time.atZone(UTC))
                 .ifPresent(dto::setResponseTime);
@@ -411,10 +500,20 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
     private Map<String, ?> parseJsonAsMap(String commonData) {
         try {
-             return objectMapper.readValue(commonData, new TypeReference<Map<String, ?>>() {});
+             return objectMapper.readValue(commonData, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             LOG.error(e,e);
             throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00004, commonData);
+        }
+    }
+
+
+    private String writeMapAsJson(Map<String,?> map){
+        try {
+            return objectMapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00003, map);
         }
     }
 
@@ -495,11 +594,23 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .createFrom()
                 .iterable(type.getEventHandlers())
                 .map(QueueEventHandler.class::cast)
-                .call(handler -> handler.delete())
+                .call(PanacheEntityBase::delete)
                 .collectItems()
                 .asList()
                 .onItem()
                     .invoke(item -> type.getEventHandlers().clear())
                 .chain(() -> Uni.createFrom().voidItem());
+    }
+}
+
+
+@Data
+class QueueNumber{
+    QueueRequest request;
+    String number;
+
+    public QueueNumber(QueueRequest request, String number) {
+        this.request = request;
+        this.number = number;
     }
 }

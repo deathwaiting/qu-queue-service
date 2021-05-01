@@ -68,6 +68,9 @@ public class Queue extends PanacheEntityBase {
     @ToString.Exclude
     public Set<QueueAction> actions;
 
+    @Column(name = "number_generator")
+    public String numberGenerator;
+
 
 
     public static Uni<QueueListPage> getQueuesByOrganization(Long orgId, QueueListParams params) {

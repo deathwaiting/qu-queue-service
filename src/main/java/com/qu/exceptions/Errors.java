@@ -14,7 +14,8 @@ public enum Errors {
     E$QUE$00001("Failed to create Queue type! cause: %s"),
     E$QUE$00002("Queue type doesn't exists!"),
     E$QUE$00003("Queue with Id[%d] doesn't exists!"),
-    E$QUE$00004("Cannot change queue state from [%s] to [%s]!")
+    E$QUE$00004("Cannot change queue state from [%s] to [%s]!"),
+    E$QUE$00005("Failed to create queue turn!")
     ;
 
     private String msg;
