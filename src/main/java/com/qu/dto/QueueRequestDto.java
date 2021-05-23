@@ -17,4 +17,6 @@ public class QueueRequestDto {
     public String refuser;
     public ZonedDateTime responseTime;
     public Long id;
+    public Long queueId;
+    public boolean autoAccept;
 }

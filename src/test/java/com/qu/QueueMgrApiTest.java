@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import javax.inject.Inject;
+import javax.json.JsonObject;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -291,6 +292,50 @@ public class QueueMgrApiTest {
         assertEquals("1", turnRow.queueNumber);
     }
 
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestAsAnonymus(){
+        var id = 99934L;
+        var clientDetails =
+                createObjectBuilder()
+                .add("name", "El za3eem 3del shakal")
+                .add("email", "el.na7o.545@shakal.com")
+                .build();
+        var body = createTurnRequestRequestBody(clientDetails);
+        var response =
+                given()
+                        .when()
+                        .contentType(JSON)
+                        .body(body)
+                        .post("/queue/{id}/turn/request", id)
+                        .then()
+                        .statusCode(200);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE queue_id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", id));
+        assertNotNull(requestRow.requestTime);
+        assertNull(requestRow.responseTime);
+        assertNotNull(requestRow.id);
+        assertEquals(id, requestRow.queueId);
+        assertNotNull(requestRow.clientId);
+        assertEquals(clientDetails.toString(), requestRow.clientDetails);
+    }
+
+
+
+    private String createTurnRequestRequestBody(JsonObject clientDetails) {
+        return createObjectBuilder()
+                .add("client_details", clientDetails)
+                .build()
+                .toString();
+    }
 
 
     private String createEnqueueRequestBody() {

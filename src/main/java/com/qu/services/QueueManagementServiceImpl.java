@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
-import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
 import com.qu.persistence.entities.*;
@@ -38,6 +37,7 @@ import static com.qu.commons.enums.QueueActionType.CREATE;
 import static com.qu.exceptions.Errors.*;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static java.lang.String.format;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.FLOOR;
@@ -180,9 +180,24 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     @RolesAllowed(QUEUE_MANAGER)
     @Transactional
     public Uni<QueueTurnDto> enqueue(QueueTurnCreateDto turn) {
-        return createTurnRequest(turn)
+        return createTurnRequestForAdmin(turn)
                 .map(QueueRequestDto::getId)
                 .flatMap(this::createTurn);
+    }
+
+
+
+    @Override
+    @Transactional
+    public Uni<QueueRequestAnswerDto> makeRequest(QueueRequestCreateDto request) {
+        return createTurnRequestForClient(request)
+                .flatMap(req -> {
+                    if(req.autoAccept){
+                        return createTurn(req.id)
+                                .map(turn -> new QueueRequestAnswerDto(req, turn));
+                    }else{
+                        return Uni.createFrom().item( new QueueRequestAnswerDto(req, null));
+                    }});
     }
 
 
@@ -226,28 +241,48 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     }
 
 
-    private Uni<QueueRequestDto> createTurnRequest(QueueRequestCreateDto turn) {
+    private Uni<QueueRequestDto> createTurnRequestForAdmin(QueueRequestCreateDto turn) {
         var orgId = securityService.getUserOrganization();
-        return Queue
-                .findByIdAndOrganizationId(turn.queueId, orgId)
-                    .onItem().ifNull()
-                        .failWith(() -> new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, turn.queueId))
-                    .onItem().ifNotNull()
-                        .transformToUni(qu -> createTurnRequestEntity(turn, qu))
-                        .map(this::toQueueRequestDto);
+        var qu = Queue.findByIdAndOrganizationId(turn.queueId, orgId);
+        return createTurnRequest(turn, qu);
     }
 
 
 
+    private Uni<QueueRequestDto> createTurnRequestForClient(QueueRequestCreateDto turn) {
+        var qu = Queue.<Queue>findById(turn.queueId);
+        return createTurnRequest(turn, qu);
+    }
+
+
+
+    private Uni<QueueRequestDto> createTurnRequest(QueueRequestCreateDto turn, Uni<Queue> queue) {
+        return queue
+                .onItem().ifNull()
+                .failWith(() -> new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, turn.queueId))
+                .onItem().ifNotNull()
+                .transformToUni(qu -> createTurnRequestEntity(turn, qu))
+                .map(this::toQueueRequestDto);
+    }
+
+
     private Uni<QueueRequest> createTurnRequestEntity(QueueRequestCreateDto request, Queue qu) {
         var clientDetails = writeMapAsJson(request.clientDetails);
+        var clientId = ofNullable(request.clientId).orElseGet(() -> createRandomClientId(qu));
         var entity = new QueueRequest();
         entity.setQueue(qu);
-        entity.setClientId(request.clientId);
+        entity.setClientId(clientId);
         entity.setClientDetails(clientDetails);
         return entity
                 .persistAndFlush()
                 .chain(() -> Uni.createFrom().item(entity));
+    }
+
+
+
+    private String createRandomClientId(Queue qu) {
+        var uuid = UUID.randomUUID().toString();
+        return format("client-qu[%d]-%s", qu.getId(), uuid);
     }
 
 
@@ -369,6 +404,8 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         dto.refused = ofNullable(request.getRefused()).orElse(false);
         dto.refuser = request.getAcceptorId();
         dto.id = request.getId();
+        dto.queueId = request.getQueue().getId();
+        dto.autoAccept = request.getQueue().getAutoAcceptEnabled();
         ofNullable(request.getResponseTime())
                 .map(time -> time.atZone(UTC))
                 .ifPresent(dto::setResponseTime);

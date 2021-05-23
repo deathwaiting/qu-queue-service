@@ -93,4 +93,12 @@ public class QueueController {
         turn.queueId = id;
         return queueMgrService.enqueue(turn);
     }
+
+
+    @POST
+    @Path("/{id}/turn/request")
+    public Uni<QueueRequestAnswerDto> makeTurnRequest(@NotNull @RestPath("id")Long id, @NotNull QueueRequestCreateDto request){
+        request.queueId = id;
+        return queueMgrService.makeRequest(request);
+    }
 }
