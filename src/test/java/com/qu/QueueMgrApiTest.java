@@ -9,6 +9,7 @@ import com.qu.test.utils.Sql;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectMock;
 import io.restassured.common.mapper.TypeRef;
+import io.restassured.response.ValidatableResponse;
 import io.smallrye.common.annotation.Blocking;
 import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ import static com.qu.test.utils.TestUtils.readTestResourceAsString;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static java.lang.String.format;
+import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
@@ -281,6 +283,12 @@ public class QueueMgrApiTest {
         assertNotNull(requestRow.id);
         assertEquals(id, requestRow.queueId);
 
+        assertTurnCreated(requestRow);
+    }
+
+
+
+    private void assertTurnCreated(QueueRequestRow requestRow) {
         var turnRow =
                 dao
                     .getFirstRow("SELECT id, enqueue_time, request_id, queue_number FROM QUEUE_TURN" +
@@ -305,13 +313,102 @@ public class QueueMgrApiTest {
                 .build();
         var body = createTurnRequestRequestBody(clientDetails);
         var response =
-                given()
-                        .when()
-                        .contentType(JSON)
-                        .body(body)
-                        .post("/queue/{id}/turn/request", id)
-                        .then()
+                postTurnRequestToApp(id, body)
                         .statusCode(200);
+
+        assertRequestCreated(id, clientDetails, false);
+    }
+
+
+
+    private ValidatableResponse postTurnRequestToApp(long id, String body) {
+        return given()
+                .when()
+                .contentType(JSON)
+                .body(body)
+                .post("/queue/{id}/turn/request", id)
+                .then();
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestAsNonAnonymus(){
+        var id = 99934L;
+        var clientId = "01111111111";
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientId, clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                    .statusCode(200);
+
+        var requestRow = assertRequestCreated(id, clientDetails, false);
+        assertEquals(clientId, requestRow.clientId);
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestForAutoAcceptQueue(){
+        var id = 99937L;
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                        .statusCode(200);
+
+        var requestRow = assertRequestCreated(id, clientDetails, true);
+        assertTurnCreated(requestRow);
+    }
+
+
+
+    private QueueRequestRow assertRequestCreated(long id, JsonObject clientDetails, boolean hasResponse) {
+        var requestRow =
+                dao
+                    .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                    " WHERE queue_id = :id" +
+                                    " order by request_Time desc"
+                            , QueueRequestRow.class
+                            , Map.of("id", id));
+        assertNotNull(requestRow.requestTime);
+        assertNotNull(requestRow.id);
+        assertEquals(id, requestRow.queueId);
+        assertNotNull(requestRow.clientId);
+        assertEquals(clientDetails.toString(), requestRow.clientDetails);
+        if(hasResponse){
+            assertNotNull(requestRow.responseTime);
+        }else{
+            assertNull(requestRow.responseTime);
+        }
+        return requestRow;
+    }
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestNotStartedQueue(){
+        var id = 99933L;
+        var clientId = "01111111111";
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientId, clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                        .statusCode(406);
 
         var requestRow =
                 dao
@@ -320,21 +417,113 @@ public class QueueMgrApiTest {
                                 " order by request_Time desc"
                         , QueueRequestRow.class
                         , Map.of("id", id));
-        assertNotNull(requestRow.requestTime);
-        assertNull(requestRow.responseTime);
-        assertNotNull(requestRow.id);
-        assertEquals(id, requestRow.queueId);
-        assertNotNull(requestRow.clientId);
-        assertEquals(clientDetails.toString(), requestRow.clientDetails);
+        assertNull(requestRow);
     }
 
 
 
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestPausedQueue(){
+        var id = 99934L;
+        var clientId = "01111111111";
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientId, clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                    .statusCode(406);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE queue_id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", id));
+        assertNull(requestRow);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestEndedQueue(){
+        var id = 99935L;
+        var clientId = "01111111111";
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientId, clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                    .statusCode(406);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE queue_id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", id));
+        assertNull(requestRow);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void makeRequestMaxedQueue(){
+        var id = 99936L;
+        var clientId = "01111111111";
+
+        var countRequestsBefore = countRequests(id);
+
+        var clientDetails =
+                createObjectBuilder()
+                        .add("name", "El za3eem 3del shakal")
+                        .add("email", "el.na7o.545@shakal.com")
+                        .build();
+        var body = createTurnRequestRequestBody(clientId, clientDetails);
+        var response =
+                postTurnRequestToApp(id, body)
+                    .statusCode(406);
+
+        var countRequestsAfter = countRequests(id);
+        assertEquals(countRequestsBefore, countRequestsAfter);
+    }
+
+
+
+    private Long countRequests(long id) {
+        return dao
+                .getSingleResult("SELECT COUNT(*) FROM QUEUE_REQUEST " +
+                                " WHERE queue_id = :id",
+                        Long.class,
+                        Map.of("id", id));
+    }
+
+
     private String createTurnRequestRequestBody(JsonObject clientDetails) {
-        return createObjectBuilder()
-                .add("client_details", clientDetails)
-                .build()
-                .toString();
+        return createTurnRequestRequestBody(null, clientDetails);
+    }
+
+
+
+    private String createTurnRequestRequestBody(String clientId, JsonObject clientDetails) {
+        var jsonBuilder =
+                createObjectBuilder()
+                .add("client_details", clientDetails);
+        if(nonNull(clientId)) jsonBuilder.add("client_id", clientId);
+        return jsonBuilder.build().toString();
     }
 
 

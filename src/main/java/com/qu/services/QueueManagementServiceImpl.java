@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
+import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
 import com.qu.persistence.entities.*;
@@ -243,14 +244,14 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
     private Uni<QueueRequestDto> createTurnRequestForAdmin(QueueRequestCreateDto turn) {
         var orgId = securityService.getUserOrganization();
-        var qu = Queue.findByIdAndOrganizationId(turn.queueId, orgId);
+        var qu = Queue.getQueueFullDetailsById(turn.queueId, orgId);
         return createTurnRequest(turn, qu);
     }
 
 
 
     private Uni<QueueRequestDto> createTurnRequestForClient(QueueRequestCreateDto turn) {
-        var qu = Queue.<Queue>findById(turn.queueId);
+        var qu = Queue.<Queue>getQueueFullDetailsById(turn.queueId);
         return createTurnRequest(turn, qu);
     }
 
@@ -261,9 +262,25 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .onItem().ifNull()
                 .failWith(() -> new RuntimeBusinessException(NOT_FOUND, E$QUE$00003, turn.queueId))
                 .onItem().ifNotNull()
-                .transformToUni(qu -> createTurnRequestEntity(turn, qu))
-                .map(this::toQueueRequestDto);
+                    .transform(this::validateQueueForNewRequest)
+                    .flatMap(qu -> createTurnRequestEntity(turn, qu))
+                    .map(this::toQueueRequestDto);
     }
+
+
+
+    private Queue validateQueueForNewRequest(Queue qu) {
+        var status = getQueueStatus(qu);
+        var maxQuSize = ofNullable(qu.getMaxSize()).orElse(0);
+        if(!QueueActionType.START.equals(status)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00006);
+        }
+        if(getQueueSize(qu) >= maxQuSize){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00007);
+        }
+        return qu;
+    }
+
 
 
     private Uni<QueueRequest> createTurnRequestEntity(QueueRequestCreateDto request, Queue qu) {
@@ -339,6 +356,17 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .map(this::toQueueTurnDto)
                 .sorted(comparing(this::getTurnOrderingScore))
                 .collect(toList());
+    }
+
+
+
+    private Long getQueueSize(Queue queue) {
+        return queue
+                .getRequests()
+                .stream()
+                .map(QueueRequest::getTurn)
+                .filter(Objects::nonNull)
+                .count();
     }
 
 
@@ -462,7 +490,8 @@ public class QueueManagementServiceImpl implements QueueManagementService{
         return entity
                 .getActions()
                 .stream()
-                .sorted(comparing(QueueAction::getActionTime).reversed())
+                .sorted(comparing(QueueAction::getActionTime).reversed()
+                        .thenComparing(QueueAction::getId).reversed())
                 .map(QueueAction::getActionType)
                 .map(QueueActions::valueOf)
                 .filter(action -> Set.of(SUSPEND, END, START).contains(action))

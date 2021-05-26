@@ -15,7 +15,10 @@ public enum Errors {
     E$QUE$00002("Queue type doesn't exists!"),
     E$QUE$00003("Queue with Id[%d] doesn't exists!"),
     E$QUE$00004("Cannot change queue state from [%s] to [%s]!"),
-    E$QUE$00005("Failed to create queue turn!")
+    E$QUE$00005("Failed to create queue turn!"),
+    E$QUE$00006("Cannot request Turns for that Queue! Queue is not accepting requests!"),
+    E$QUE$00007("Cannot request Turns for that Queue! Queue is Full!")
+
     ;
 
     private String msg;
