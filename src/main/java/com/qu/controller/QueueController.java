@@ -9,6 +9,7 @@ import io.smallrye.mutiny.Uni;
 import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
+import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.*;
@@ -101,4 +102,20 @@ public class QueueController {
         request.queueId = id;
         return queueMgrService.makeRequest(request);
     }
+
+
+
+    @POST
+    @Path("/{id}/turn/request/{request}/accept")
+    public Uni<QueueTurnDto> acceptTurnRequest(@NotNull @RestPath("id")Long id, @NotNull @RestPath("request")Long requestId){
+        return queueMgrService.acceptRequest(id, requestId);
+    }
+
+
+    @POST
+    @Path("/{id}/turn/request/{request}/deny")
+    public Uni<Void> denyTurnRequest(@NotNull @RestPath("id")Long id, @NotNull @RestPath("request")Long requestId){
+        return queueMgrService.denyRequest(id, requestId);
+    }
+
 }

@@ -24,4 +24,8 @@ public interface QueueManagementService {
     Uni<QueueTurnDto> enqueue(QueueTurnCreateDto turn);
 
     Uni<QueueRequestAnswerDto> makeRequest(QueueRequestCreateDto request);
+
+    Uni<QueueTurnDto> acceptRequest(Long id, Long requestId);
+
+    Uni<Void> denyRequest(Long id, Long requestId);
 }

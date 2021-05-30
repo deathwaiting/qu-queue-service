@@ -69,4 +69,24 @@ public class QueueRequest extends PanacheEntityBase {
                         , Map.of("id", id))
                 .firstResult();
     }
+
+
+
+    public static Uni<QueueRequest> findByIdAndQueueAndOrganization(Long id, Long queueId, Long organizationId){
+        return QueueRequest
+                .find("SELECT req FROM QueueRequest req " +
+                                " LEFT JOIN FETCH req.queue qu " +
+                                " LEFT JOIN FETCH qu.type type " +
+                                " LEFT JOIN FETCH req.turn turn " +
+                                " LEFT JOIN FETCH turn.leave leave " +
+                                " LEFT JOIN FETCH turn.pick pick " +
+                                " LEFT JOIN FETCH turn.turnMove move "+
+                                " WHERE req.id = :id " +
+                                " AND qu.id = :queueId " +
+                                " AND type.organizationId = :organizationId"
+                        , Map.of("id", id
+                            , "queueId", queueId
+                            , "organizationId", organizationId))
+                .firstResult();
+    }
 }

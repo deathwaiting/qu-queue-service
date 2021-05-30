@@ -9,6 +9,8 @@ import javax.json.JsonNumber;
 import java.util.Optional;
 
 import static com.qu.exceptions.Errors.E$GEN$00002;
+import static com.qu.exceptions.Errors.E$GEN$00005;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
 import static java.util.Optional.ofNullable;
 
@@ -32,5 +34,13 @@ public class SecurityServiceImpl implements SecurityService{
                 .orElseThrow(() -> new RuntimeBusinessException(NOT_ACCEPTABLE, E$GEN$00002));
     }
 
+
+
+    @Override
+    public String getUserId() {
+        return ofNullable(jwt)
+                .map(j -> j.<String>getClaim(SUB_CLAIM))
+                .orElseThrow(() -> new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$GEN$00005));
+    }
 
 }

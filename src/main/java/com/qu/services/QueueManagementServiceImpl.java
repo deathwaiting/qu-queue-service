@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
-import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
 import com.qu.persistence.entities.*;
@@ -42,8 +41,10 @@ import static java.lang.String.format;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.FLOOR;
+import static java.time.LocalDateTime.now;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparing;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.*;
 
@@ -201,6 +202,69 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                     }});
     }
 
+
+
+    @Override
+    @Transactional
+    public Uni<QueueTurnDto> acceptRequest(Long queueId, Long requestId) {
+        var orgId = securityService.getUserOrganization();
+        return QueueRequest
+                .<QueueRequest>findByIdAndQueueAndOrganization(requestId, queueId, orgId)
+                .onItem()
+                    .ifNull()
+                    .failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00008))
+                .map(this::validateRequestCanBeHandled)
+                .flatMap(this::doAcceptRequest);
+    }
+
+
+
+    @Override
+    public Uni<Void> denyRequest(Long queueId, Long requestId) {
+        var orgId = securityService.getUserOrganization();
+        return QueueRequest
+                .<QueueRequest>findByIdAndQueueAndOrganization(requestId, queueId, orgId)
+                .onItem()
+                .ifNull()
+                .failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00008))
+                .map(this::validateRequestCanBeHandled)
+                .flatMap(this::doDenyRequest);
+    }
+
+
+    private Uni<QueueTurnDto> doAcceptRequest(QueueRequest queueRequest) {
+        var user = securityService.getUserId();
+        queueRequest.setAcceptorId(user);
+        queueRequest.setResponseTime(now());
+        queueRequest.setRefused(false);
+        return queueRequest
+                .persistAndFlush()
+                .flatMap((e) -> createTurn(queueRequest.getId()));
+    }
+
+
+
+    private Uni<Void> doDenyRequest(QueueRequest queueRequest) {
+        var user = securityService.getUserId();
+        queueRequest.setAcceptorId(user);
+        queueRequest.setResponseTime(now());
+        queueRequest.setRefused(true);
+        return queueRequest
+                .persistAndFlush();
+    }
+
+
+    private QueueRequest validateRequestCanBeHandled(QueueRequest request) {
+        var isHandled =
+                ofNullable(request.getRefused()).orElse(false) ||
+                        nonNull(request.getAcceptorId()) ||
+                        nonNull(request.getResponseTime()) ||
+                        nonNull(request.getTurn());
+        if(isHandled){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00009);
+        }
+        return request;
+    }
 
 
     private Uni<QueueTurnDto> createTurn(Long requestId) {

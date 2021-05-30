@@ -289,15 +289,45 @@ public class QueueMgrApiTest {
 
 
     private void assertTurnCreated(QueueRequestRow requestRow) {
+        assertTurnCreated(requestRow.id);
+    }
+
+
+
+    private void assertTurnCreated(Long requestId) {
         var turnRow =
                 dao
-                    .getFirstRow("SELECT id, enqueue_time, request_id, queue_number FROM QUEUE_TURN" +
-                                    " WHERE request_id = :id" +
-                                    " order by enqueue_time desc"
-                            , QueueTurnRow.class
-                            , Map.of("id", requestRow.id));
+                .getFirstRow("SELECT id, enqueue_time, request_id, queue_number FROM QUEUE_TURN" +
+                                " WHERE request_id = :id" +
+                                " order by enqueue_time desc"
+                        , QueueTurnRow.class
+                        , Map.of("id", requestId));
         assertNotNull(turnRow.enqueueTime);
         assertEquals("1", turnRow.queueNumber);
+    }
+
+
+
+    private void assertHasSingleTurnCreated(Long requestId) {
+        assertNTurnCreated(1L,requestId);
+    }
+
+
+
+    private void assertNoTurnCreated(Long requestId) {
+        assertNTurnCreated(0L,requestId);
+    }
+
+
+
+    private void assertNTurnCreated(Long expectedCount, Long requestId) {
+        var count =
+                dao
+                .getSingleResult("SELECT count(*) FROM QUEUE_TURN" +
+                                " WHERE request_id = :id"
+                        , Long.class
+                        , Map.of("id", requestId));
+        assertEquals(expectedCount, count);
     }
 
 
@@ -327,6 +357,26 @@ public class QueueMgrApiTest {
                 .contentType(JSON)
                 .body(body)
                 .post("/queue/{id}/turn/request", id)
+                .then();
+    }
+
+
+    private ValidatableResponse postTurnRequestAcceptToApp(long quId, long requestId) {
+        return given()
+                .when()
+                    .auth().oauth2(serverJwt)
+                .contentType(JSON)
+                .post("/queue/{id}/turn/request/{request}/accept", quId, requestId)
+                .then();
+    }
+
+
+    private ValidatableResponse postTurnRequestDenyToApp(long quId, long requestId) {
+        return given()
+                .when()
+                .auth().oauth2(serverJwt)
+                .contentType(JSON)
+                .post("/queue/{id}/turn/request/{request}/deny", quId, requestId)
                 .then();
     }
 
@@ -499,6 +549,90 @@ public class QueueMgrApiTest {
 
         var countRequestsAfter = countRequests(id);
         assertEquals(countRequestsBefore, countRequestsAfter);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void acceptRequest(){
+        var quId = 99938L;
+        var requestId = 98004L;
+        var response =
+                postTurnRequestAcceptToApp(quId, requestId)
+                        .statusCode(200);
+
+        assertTurnCreated(requestId);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", requestId));
+        assertNotNull(requestRow.responseTime);
+        assertNotNull(requestRow.acceptorId);
+        assertFalse(requestRow.refused);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void acceptHandledRequest(){
+        var quId = 99938L;
+        var requestId = 98005L;
+        assertHasSingleTurnCreated(requestId);
+        var response =
+                postTurnRequestAcceptToApp(quId, requestId)
+                        .statusCode(406);
+
+        assertHasSingleTurnCreated(requestId);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void denyRequest(){
+        var quId = 99938L;
+        var requestId = 98004L;
+        var response =
+                postTurnRequestDenyToApp(quId, requestId)
+                        .statusCode(204);
+
+        assertNoTurnCreated(requestId);
+
+        var requestRow =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_REQUEST" +
+                                " WHERE id = :id" +
+                                " order by request_Time desc"
+                        , QueueRequestRow.class
+                        , Map.of("id", requestId));
+        assertNotNull(requestRow.responseTime);
+        assertNotNull(requestRow.acceptorId);
+        assertTrue(requestRow.refused);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_2.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void denyHandledRequest(){
+        var quId = 99938L;
+        var requestId = 98005L;
+        assertHasSingleTurnCreated(requestId);
+        var response =
+                postTurnRequestDenyToApp(quId, requestId)
+                        .statusCode(406);
+
+        assertHasSingleTurnCreated(requestId);
     }
 
 

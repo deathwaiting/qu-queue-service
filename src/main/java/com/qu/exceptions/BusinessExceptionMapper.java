@@ -1,5 +1,7 @@
 package com.qu.exceptions;
 
+import org.jboss.logging.Logger;
+
 import javax.json.Json;
 import javax.json.JsonObjectBuilder;
 import javax.ws.rs.core.Response;
@@ -11,8 +13,11 @@ import static javax.json.Json.createObjectBuilder;
 
 @Provider
 public class BusinessExceptionMapper implements ExceptionMapper<RuntimeBusinessException> {
+    static final Logger logger = Logger.getLogger(BusinessExceptionMapper.class);
+
     @Override
     public Response toResponse(RuntimeBusinessException exception) {
+        logger.error(exception.getMessage() , exception);
         var exceptionBody =
                 createObjectBuilder()
                     .add("error_code", exception.getErrorCode().name())

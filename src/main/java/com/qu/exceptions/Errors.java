@@ -5,6 +5,7 @@ public enum Errors {
     E$GEN$00002("No Organization found for the user!"),
     E$GEN$00003("Failed to write object as json string! object[%s]"),
     E$GEN$00004("Failed to parse json string! string[%s]"),
+    E$GEN$00005("Failed to fetch current user!"),
 
 
     E$USR$00001("Invalid roles [%s]!"),
@@ -17,7 +18,9 @@ public enum Errors {
     E$QUE$00004("Cannot change queue state from [%s] to [%s]!"),
     E$QUE$00005("Failed to create queue turn!"),
     E$QUE$00006("Cannot request Turns for that Queue! Queue is not accepting requests!"),
-    E$QUE$00007("Cannot request Turns for that Queue! Queue is Full!")
+    E$QUE$00007("Cannot request Turns for that Queue! Queue is Full!"),
+    E$QUE$00008("Cannot find turn request!"),
+    E$QUE$00009("Invalid turn request! Already handled!")
 
     ;
 
