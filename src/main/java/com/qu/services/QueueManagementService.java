@@ -28,4 +28,8 @@ public interface QueueManagementService {
     Uni<QueueTurnDto> acceptRequest(Long id, Long requestId);
 
     Uni<Void> denyRequest(Long id, Long requestId);
+
+    Uni<QueueTurnDto> dequeue(Long id);
+
+    Uni<QueueTurnDto> skipTurn(Long queueId, String skipReason);
 }

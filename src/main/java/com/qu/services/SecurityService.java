@@ -10,4 +10,5 @@ public interface SecurityService {
     Optional<Long> getUserOrganizationOptional();
     Long getUserOrganization();
     String getUserId();
+    String getUserJwtDecoded();
 }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.commons.enums.QueueActions;
 import com.qu.commons.enums.QueueActionType;
 import com.qu.dto.*;
+import com.qu.exceptions.Errors;
 import com.qu.exceptions.RuntimeBusinessException;
 import com.qu.mappers.QueueDtoMapper;
 import com.qu.persistence.entities.*;
@@ -28,6 +29,7 @@ import javax.transaction.Transactional;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
@@ -35,6 +37,7 @@ import static com.qu.commons.constants.Roles.QUEUE_MANAGER;
 import static com.qu.commons.enums.QueueActions.*;
 import static com.qu.commons.enums.QueueActionType.CREATE;
 import static com.qu.exceptions.Errors.*;
+import static com.qu.utils.Utils.allIsNull;
 import static com.qu.utils.Utils.anyIsNull;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static java.lang.String.format;
@@ -44,6 +47,7 @@ import static java.math.RoundingMode.FLOOR;
 import static java.time.LocalDateTime.now;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparing;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.*;
@@ -206,6 +210,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
     @Override
     @Transactional
+    @RolesAllowed(QUEUE_MANAGER)
     public Uni<QueueTurnDto> acceptRequest(Long queueId, Long requestId) {
         var orgId = securityService.getUserOrganization();
         return QueueRequest
@@ -220,6 +225,8 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
     @Override
+    @Transactional
+    @RolesAllowed(QUEUE_MANAGER)
     public Uni<Void> denyRequest(Long queueId, Long requestId) {
         var orgId = securityService.getUserOrganization();
         return QueueRequest
@@ -230,6 +237,118 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .map(this::validateRequestCanBeHandled)
                 .flatMap(this::doDenyRequest);
     }
+
+
+
+    @Override
+    @Transactional
+    @RolesAllowed(QUEUE_MANAGER)
+    public Uni<QueueTurnDto> dequeue(Long id) {
+        return getQueue(id)
+                .map(this::validateQueue)
+                .map(QueueDetailsDto::getTurns)
+                .toMulti()
+                .flatMap(Multi.createFrom()::iterable)
+                .filter(this::notPicked)
+                .collectItems()
+                .first()
+                    .onItem().ifNull().failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00011))
+                .flatMap(this::doDequeue);
+    }
+
+
+
+    @Override
+    public Uni<QueueTurnDto> skipTurn(Long id, String skipReason) {
+        return  getQueue(id)
+                .map(this::validateQueue)
+                .map(QueueDetailsDto::getTurns)
+                .toMulti()
+                .flatMap(Multi.createFrom()::iterable)
+                .filter(this::notPicked)
+                .collectItems()
+                .first()
+                    .onItem().ifNull().failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00011))
+                .flatMap(turn -> doTurnSkip(turn, skipReason));
+    }
+
+
+    private QueueDetailsDto validateQueue(QueueDetailsDto qu){
+        if(!QueueActionType.START.equals(qu.status)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00012);
+        }
+        return qu;
+    }
+
+
+    private Uni<QueueTurnDto> doDequeue(QueueTurnDto dto) {
+        return QueueTurn
+                .<QueueTurn>findById(dto.id)
+                .flatMap(this::dequeueTurn)
+                .map(pick -> addPickInfo(dto, pick));
+    }
+
+
+    private Uni<QueueTurnDto> doTurnSkip(QueueTurnDto dto, String skipReason) {
+        return QueueTurn
+                .<QueueTurn>findById(dto.id)
+                .flatMap(turn -> skipTurn(turn, skipReason))
+                .map(pick -> addPickInfo(dto, pick));
+    }
+
+
+
+    private QueueTurnDto addPickInfo(QueueTurnDto dto, QueueTurnPick pick) {
+        try {
+            var pickerDetails = objectMapper.readValue(pick.getServerDetails(), new TypeReference<Map<String,Object>>(){});
+            dto.setPicker(pick.getServerId());
+            dto.setPickerDetails(pickerDetails);
+            dto.setPickTime(pick.getPickTime());
+            dto.setSkipTime(pick.getSkipTime());
+            dto.setSkipReason(pick.getSkipReason());
+            return dto;
+        } catch (JsonProcessingException e) {
+            LOG.error(e,e);
+            throw new RuntimeBusinessException(INTERNAL_SERVER_ERROR, E$QUE$00010);
+        }
+    }
+
+
+    private Uni<QueueTurnPick> dequeueTurn(QueueTurn turn) {
+        var userDetails = securityService.getUserJwtDecoded();
+        var userId = securityService.getUserId();
+        var pick = new QueueTurnPick();
+        pick.setPickTime(ZonedDateTime.now());
+        pick.setTurn(turn);
+        pick.setServerId(userId);
+        pick.setServerDetails(userDetails);
+        return  pick
+                .persistAndFlush()
+                .map( v -> pick);
+    }
+
+
+
+    private Uni<QueueTurnPick> skipTurn(QueueTurn turn, String skipReason) {
+        var userDetails = securityService.getUserJwtDecoded();
+        var userId = securityService.getUserId();
+        var skip = new QueueTurnPick();
+        skip.setSkipTime(ZonedDateTime.now());
+        skip.setTurn(turn);
+        skip.setServerId(userId);
+        skip.setServerDetails(userDetails);
+        skip.setSkipReason(skipReason);
+        return  skip
+                .persistAndFlush()
+                .map( v -> skip);
+    }
+
+
+
+    private boolean notPicked(QueueTurnDto turn) {
+        return allIsNull(turn.picker, turn.pickTime, turn.skipTime);
+    }
+
 
 
     private Uni<QueueTurnDto> doAcceptRequest(QueueRequest queueRequest) {

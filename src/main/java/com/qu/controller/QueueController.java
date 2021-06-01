@@ -118,4 +118,18 @@ public class QueueController {
         return queueMgrService.denyRequest(id, requestId);
     }
 
+
+    @GET
+    @Path("/{id}/dequeue")
+    public Uni<QueueTurnDto> dequeue(@NotNull @RestPath("id")Long id){
+        return queueMgrService.dequeue(id);
+    }
+
+
+    @POST
+    @Path("/{id}/skip")
+    public Uni<QueueTurnDto> skipTurn(@NotNull @RestPath("id")Long id, @RestQuery("reason")String skipReason){
+        return queueMgrService.skipTurn(id, skipReason);
+    }
+
 }

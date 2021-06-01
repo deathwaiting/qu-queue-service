@@ -15,4 +15,14 @@ public class Utils {
                 .stream()
                 .anyMatch(Objects::isNull);
     }
+
+
+
+    static  public boolean allIsNull(Object... objects){
+        return ofNullable(objects)
+                .map(Arrays::asList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .allMatch(Objects::isNull);
+    }
 }

@@ -11,6 +11,7 @@ public enum Errors {
     E$USR$00001("Invalid roles [%s]!"),
     E$USR$00002("Passwords didn't match!"),
     E$USR$00003("Invalid invitation token!"),
+    E$USR$00004("Failed to parse JWT token!"),
 
     E$QUE$00001("Failed to create Queue type! cause: %s"),
     E$QUE$00002("Queue type doesn't exists!"),
@@ -20,7 +21,10 @@ public enum Errors {
     E$QUE$00006("Cannot request Turns for that Queue! Queue is not accepting requests!"),
     E$QUE$00007("Cannot request Turns for that Queue! Queue is Full!"),
     E$QUE$00008("Cannot find turn request!"),
-    E$QUE$00009("Invalid turn request! Already handled!")
+    E$QUE$00009("Invalid turn request! Already handled!"),
+    E$QUE$00010("Failed to pick the queue turn!"),
+    E$QUE$00011("Queue has no more turns!"),
+    E$QUE$00012("Invalid Queue status!")
 
     ;
 

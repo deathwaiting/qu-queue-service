@@ -99,8 +99,8 @@ create table queue_turn_insertion(
 
 create table queue_turn_pick(
     id bigserial primary key,
-    pick_time timestamp not null,
-    skip_time timestamp not null,
+    pick_time timestamp,
+    skip_time timestamp,
     skip_reason varchar(1000),
     server_id text,
     server_details text,

@@ -35,6 +35,7 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static javax.json.Json.createArrayBuilder;
 import static javax.json.Json.createObjectBuilder;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -381,6 +382,27 @@ public class QueueMgrApiTest {
     }
 
 
+
+    private ValidatableResponse dequeueNextTurn(long quId) {
+        return given()
+                .when()
+                    .auth().oauth2(serverJwt)
+                .contentType(JSON)
+                .get("/queue/{id}/dequeue", quId)
+                .then();
+    }
+
+
+    private ValidatableResponse skipNextTurn(long quId, String reason) {
+        return given()
+                .when()
+                .auth().oauth2(serverJwt)
+                .contentType(JSON)
+                .post("/queue/{id}/skip?reason={reason}", quId, reason)
+                .then();
+    }
+
+
     @Test
     @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
     @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
@@ -637,6 +659,112 @@ public class QueueMgrApiTest {
 
 
 
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void dequeueTurn(){
+        var quId = 99934L;
+        var turnId = 97003L;
+        var response =
+                dequeueNextTurn(quId)
+                        .statusCode(200)
+                        .body("id" , equalTo((int)turnId))
+                        .body("number", equalTo("ABC125"));
+
+        assertTurnDequeued(turnId);
+    }
+
+
+
+    private QueueTurnPickRow assertTurnDequeued(long turnId) {
+        var pick =
+                dao.getFirstRow(
+                        "SELECT * FROM QUEUE_TURN_PICK pick " +
+                                " WHERE pick.queue_turn_id = :turnId ",
+                        QueueTurnPickRow.class,
+                        Map.of("turnId", turnId)
+                );
+        assertNotNull(pick.pickTime);
+        assertNull(pick.skipTime);
+        assertNull(pick.skipReason);
+        assertEquals("ming", pick.serverId);
+        assertNotNull(pick.serverDetails);
+        return pick;
+    }
+
+
+
+    private QueueTurnPickRow assertTurnSkipped(long turnId, String reason) {
+        var skip =
+                dao.getFirstRow(
+                        "SELECT * FROM QUEUE_TURN_PICK pick " +
+                                " WHERE pick.queue_turn_id = :turnId ",
+                        QueueTurnPickRow.class,
+                        Map.of("turnId", turnId)
+                );
+        assertNull(skip.pickTime);
+        assertNotNull(skip.skipTime);
+        assertEquals(reason, skip.skipReason);
+        assertEquals("ming", skip.serverId);
+        assertNotNull(skip.serverDetails);
+        return skip;
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_3.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void dequeueQueueWithNoMorePickableTurns(){
+        var quId = 99934L;
+        var response =
+                dequeueNextTurn(quId)
+                        .statusCode(406);
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_3.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void dequeueQueueWithNoTurns(){
+        var quId = 99933L;
+        var response =
+                dequeueNextTurn(quId)
+                        .statusCode(406);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_3.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void dequeueStoppedQueue(){
+        var quId = 99935L;
+        var response =
+                dequeueNextTurn(quId)
+                        .statusCode(406);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void skipTurn(){
+        var quId = 99934L;
+        var turnId = 97003L;
+        var reason = "keda";
+        var response =
+                skipNextTurn(quId, reason)
+                        .statusCode(200)
+                        .body("id" , equalTo((int)turnId))
+                        .body("number", equalTo("ABC125"));
+
+        assertTurnSkipped(turnId, reason);
+    }
+
+
+
+
     private Long countRequests(long id) {
         return dao
                 .getSingleResult("SELECT COUNT(*) FROM QUEUE_REQUEST " +
@@ -784,6 +912,18 @@ public class QueueMgrApiTest {
         public LocalDateTime enqueueTime;
         public Long requestId;
         public String queueNumber;
+    }
+
+
+    @Data
+    public static class QueueTurnPickRow{
+        public Long id;
+        public LocalDateTime pickTime;
+        public LocalDateTime skipTime;
+        public String skipReason;
+        public String serverId;
+        public String serverDetails;
+        public String queueTurnId;
     }
 }
 

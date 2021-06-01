@@ -1,0 +1,7 @@
+- adding events for request/accept/deny/enqueue/dequeue may add a restriction on required data by clients.
+- add required data to client_details, means these will be shown to the client in the request form as required fields , and they will be validated as well when the request is provided.
+- this means :
+    -- we should have a variable list of required details per-queue
+    -- adding event to the queue, may add to this list
+    -- creating a request will validate the client details
+    -- these validations will be variable as well using the event bus.
