@@ -24,8 +24,8 @@ public enum Errors {
     E$QUE$00009("Invalid turn request! Already handled!"),
     E$QUE$00010("Failed to pick the queue turn!"),
     E$QUE$00011("Queue has no more turns!"),
-    E$QUE$00012("Invalid Queue status!")
-
+    E$QUE$00012("Invalid Queue status!"),
+    E$QUE$00013("Failed to cancel Turn!")
     ;
 
     private String msg;

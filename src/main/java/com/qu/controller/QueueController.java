@@ -9,7 +9,6 @@ import io.smallrye.mutiny.Uni;
 import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestQuery;
 
-import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.*;
@@ -130,6 +129,21 @@ public class QueueController {
     @Path("/{id}/skip")
     public Uni<QueueTurnDto> skipTurn(@NotNull @RestPath("id")Long id, @RestQuery("reason")String skipReason){
         return queueMgrService.skipTurn(id, skipReason);
+    }
+
+
+    @DELETE
+    @Path("/{queueId}/turn/{turnId}")
+    public Uni<Void> cancelTurn(@NotNull @RestPath("queueId")Long queueId, @NotNull @RestPath("turnId")Long turnId){
+        return queueMgrService.cancelTurn(queueId, turnId);
+    }
+
+
+
+    @DELETE
+    @Path("/{queueId}/turn/{turnId}/by_customer")
+    public Uni<Void> cancelTurnByCustomer(@NotNull @RestPath("queueId")Long queueId, @NotNull @RestPath("turnId")Long turnId, @NotNull @RestQuery("client_id")String clientId){
+        return queueMgrService.cancelTurnByCustomer(queueId, turnId, clientId);
     }
 
 }

@@ -37,8 +37,7 @@ import static com.qu.commons.constants.Roles.QUEUE_MANAGER;
 import static com.qu.commons.enums.QueueActions.*;
 import static com.qu.commons.enums.QueueActionType.CREATE;
 import static com.qu.exceptions.Errors.*;
-import static com.qu.utils.Utils.allIsNull;
-import static com.qu.utils.Utils.anyIsNull;
+import static com.qu.utils.Utils.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static java.lang.String.format;
 import static java.math.BigDecimal.ONE;
@@ -259,6 +258,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
     @Override
+    @Transactional
     public Uni<QueueTurnDto> skipTurn(Long id, String skipReason) {
         return  getQueue(id)
                 .map(this::validateQueue)
@@ -270,6 +270,58 @@ public class QueueManagementServiceImpl implements QueueManagementService{
                 .first()
                     .onItem().ifNull().failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00011))
                 .flatMap(turn -> doTurnSkip(turn, skipReason));
+    }
+
+
+
+    @Override
+    @Transactional
+    @RolesAllowed(QUEUE_MANAGER)
+    public Uni<Void> cancelTurn(Long queueId, Long turnId) {
+        var orgId = securityService.getUserOrganization();
+        return QueueTurn
+                .findFullDataByIdAndOrgIdAndQuId(turnId, orgId, queueId)
+                    .onItem().ifNull()
+                        .failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00013))
+                .onItem().ifNotNull()
+                        .transform(this::validateTurnToCancel)
+                        .flatMap(this::doCancelTurn)
+                        .chain(Uni.createFrom()::voidItem);
+    }
+
+
+
+    @Override
+    @Transactional
+    public Uni<Void> cancelTurnByCustomer(Long queueId, Long turnId, String clientId) {
+        return QueueTurn
+                .findFullDataByIdAndClientIdAndQuId(turnId, clientId, queueId)
+                    .onItem().ifNull()
+                                .failWith(new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00013))
+                .onItem().ifNotNull()
+                .transform(this::validateTurnToCancel)
+                .flatMap(this::doCancelTurn)
+                .chain(Uni.createFrom()::voidItem);
+    }
+
+
+    private QueueTurn validateTurnToCancel(QueueTurn turn) {
+        ofNullable(turn)
+            .map(QueueTurn::getRequest)
+            .map(QueueRequest::getQueue)
+            .ifPresent(this::validateQueueIsOperational);
+        if(anyNonNull(turn.getLeave(), turn.getPick())){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00013);
+        }
+        return turn;
+    }
+
+
+    private Uni<QueueLeave> doCancelTurn(QueueTurn queueTurn) {
+        var leave = new QueueLeave();
+        leave.setTurn(queueTurn);
+        leave.setLeaveTime(now());
+        return leave.persistAndFlush().map(e -> leave);
     }
 
 
@@ -453,17 +505,26 @@ public class QueueManagementServiceImpl implements QueueManagementService{
 
 
     private Queue validateQueueForNewRequest(Queue qu) {
-        var status = getQueueStatus(qu);
-        var maxQuSize = ofNullable(qu.getMaxSize()).orElse(0);
-        if(!QueueActionType.START.equals(status)){
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00006);
-        }
-        if(getQueueSize(qu) >= maxQuSize){
-            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00007);
-        }
+        validateQueueIsOperational(qu);
+        validateQueueIsNotFull(qu);
         return qu;
     }
 
+
+    private void validateQueueIsNotFull(Queue qu) {
+        var maxQuSize = ofNullable(qu.getMaxSize()).orElse(0);
+        if(getQueueSize(qu) >= maxQuSize){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00007);
+        }
+    }
+
+
+    private void validateQueueIsOperational(Queue qu) {
+        var status = getQueueStatus(qu);
+        if(!QueueActionType.START.equals(status)){
+            throw new RuntimeBusinessException(NOT_ACCEPTABLE, E$QUE$00012);
+        }
+    }
 
 
     private Uni<QueueRequest> createTurnRequestEntity(QueueRequestCreateDto request, Queue qu) {

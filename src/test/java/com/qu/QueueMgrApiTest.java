@@ -403,6 +403,25 @@ public class QueueMgrApiTest {
     }
 
 
+    private ValidatableResponse cancelTurn(long quId, long turnId) {
+        return given()
+                .when()
+                    .auth().oauth2(serverJwt)
+                .contentType(JSON)
+                .delete("/queue/{id}/turn/{turn}", quId, turnId)
+                .then();
+    }
+
+
+    private ValidatableResponse cancelTurnByCustomer(long quId, long turnId, String clientId) {
+        return given()
+                .when()
+                .contentType(JSON)
+                .delete("/queue/{id}/turn/{turn}/by_customer?client_id={clientId}", quId, turnId, clientId)
+                .then();
+    }
+
+
     @Test
     @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
     @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
@@ -764,6 +783,86 @@ public class QueueMgrApiTest {
 
 
 
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void cancelTurn(){
+        var quId = 99934L;
+        var turnId = 97003L;
+        var response =
+                cancelTurn(quId, turnId)
+                        .statusCode(204);
+
+        assertTurnCancelled(turnId);
+    }
+
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_3.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void cancelTurnInStoppedQueue(){
+        var quId = 99935L;
+        var turnId = 97004L;
+        var response =
+                cancelTurn(quId, turnId)
+                        .statusCode(406);
+
+        assertTurnNotCancelled(turnId);
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data_3.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void cancelHandledTurn(){
+        var quId = 99934L;
+        var turnId = 97001L;
+        var response =
+                cancelTurn(quId, turnId)
+                        .statusCode(406);
+
+        assertTurnNotCancelled(turnId);
+    }
+
+
+    @Test
+    @Sql(executionPhase = BEFORE_TEST_METHOD, scripts ="sql/queue_test_data.sql")
+    @Sql(executionPhase = AFTER_TEST_METHOD, scripts ="sql/clear_database.sql")
+    public void cancelTurnByClient(){
+        var quId = 99934L;
+        var turnId = 97003L;
+        var response =
+                cancelTurnByCustomer(quId, turnId, "wasta@fake.com")
+                        .statusCode(204);
+
+        assertTurnCancelled(turnId);
+    }
+
+
+
+    private void assertTurnCancelled(long turnId) {
+        var turnLeave =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_LEAVE " +
+                "WHERE queue_turn_id = :turnId"
+                , QueueLeaveRow.class
+                , Map.of("turnId", turnId));
+        assertNotNull(turnLeave.leaveTime);
+    }
+
+
+
+    private void assertTurnNotCancelled(long turnId) {
+        var turnLeave =
+                dao
+                .getFirstRow("SELECT * FROM QUEUE_LEAVE " +
+                                "WHERE queue_turn_id = :turnId"
+                        , QueueLeaveRow.class
+                        , Map.of("turnId", turnId));
+        assertNull(turnLeave);
+    }
+
 
     private Long countRequests(long id) {
         return dao
@@ -924,6 +1023,14 @@ public class QueueMgrApiTest {
         public String serverId;
         public String serverDetails;
         public String queueTurnId;
+    }
+
+
+    @Data
+    public static class QueueLeaveRow{
+        public Long id;
+        public Long queueTurnId;
+        public LocalDateTime leaveTime;
     }
 }
 

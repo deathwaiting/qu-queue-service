@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 
+import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
 
 public class Utils {
@@ -24,5 +25,14 @@ public class Utils {
                 .orElseGet(Collections::emptyList)
                 .stream()
                 .allMatch(Objects::isNull);
+    }
+
+
+    static public boolean anyNonNull(Object ... objects){
+        return ofNullable(objects)
+                .map(Arrays::asList)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .anyMatch(Objects::nonNull);
     }
 }

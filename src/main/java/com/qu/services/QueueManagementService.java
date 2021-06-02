@@ -32,4 +32,8 @@ public interface QueueManagementService {
     Uni<QueueTurnDto> dequeue(Long id);
 
     Uni<QueueTurnDto> skipTurn(Long queueId, String skipReason);
+
+    Uni<Void> cancelTurn(Long queueId, Long turnId);
+
+    Uni<Void> cancelTurnByCustomer(Long queueId, Long turnId, String clientId);
 }
