@@ -26,7 +26,8 @@ dependencies {
     implementation("io.quarkus:quarkus-reactive-pg-client")
     implementation("io.quarkus:quarkus-oidc")
     implementation("org.hibernate.validator:hibernate-validator")
-
+    implementation("io.quarkus:quarkus-jdbc-postgresql")
+    implementation("io.quarkus:quarkus-keycloak-admin-client")
 
     compileOnly("org.projectlombok:lombok:1.18.16")
     compileOnly("javax.validation:validation-api:2.0.1.Final")
@@ -36,7 +37,7 @@ dependencies {
     implementation("org.mapstruct:mapstruct:1.4.1.Final")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.4.1.Final")
 
-    testImplementation("io.quarkus:quarkus-jdbc-postgresql")
+
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.quarkus:quarkus-junit5-mockito")
     testImplementation("io.rest-assured:rest-assured")

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 @Data
 @NoArgsConstructor
 public class QueueRequestAnswerDto {

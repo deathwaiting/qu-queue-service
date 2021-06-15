@@ -1,0 +1,49 @@
+version: "3.9"
+networks:
+  backend:
+  frontend:
+services:
+  database:
+    image: "postgres"
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U quarkus" ]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+    networks:
+      - backend
+    volumes:
+      - "/home/ahmed/qu/dev:/var/lib/postgresql/data"
+  keycloak:
+    image: "quay.io/keycloak/keycloak:13.0.1"
+    ports:
+      - "8080:8080"
+      - "9990:9990"
+    networks:
+      - backend
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      DB_VENDOR: postgres
+      DB_DATABASE: postgres
+      DB_ADDR: database
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KEYCLOAK_IMPORT: /tmp/qu-realm.json
+    volumes:
+      - "./qu-realm.json:/tmp/qu-realm.json"
+    healthcheck:
+      interval: 30s
+      timeout: 30s
+      start-period: 60s
+      retries: 3
+      test: [ "CMD-SHELL", "curl --fail http://localhost:8080/auth/realms/qu" ]

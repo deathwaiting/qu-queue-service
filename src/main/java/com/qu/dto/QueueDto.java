@@ -6,7 +6,6 @@ import com.qu.commons.enums.QueueActionType;
 
 import java.time.ZonedDateTime;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class QueueDto {
     public Long id;
     public Boolean autoAcceptEnabled;

@@ -9,7 +9,6 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Optional;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 @Data
 public class QueueTurnDto {
     public Long id;

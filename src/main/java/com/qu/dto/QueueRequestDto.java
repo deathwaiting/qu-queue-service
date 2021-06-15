@@ -7,7 +7,6 @@ import lombok.Data;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 @Data
 public class QueueRequestDto {
     public ZonedDateTime requestTime;

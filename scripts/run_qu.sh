@@ -1,0 +1,1 @@
+/deployments/wait-for-it.sh

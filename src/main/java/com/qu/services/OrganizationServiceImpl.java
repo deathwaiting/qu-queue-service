@@ -3,6 +3,7 @@ package com.qu.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.dto.*;
 import com.qu.exceptions.RuntimeBusinessException;
+import com.qu.mappers.UserDtoMapper;
 import com.qu.persistence.entities.Organization;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.mutiny.Multi;
@@ -31,16 +32,17 @@ public class OrganizationServiceImpl implements OrganizationService{
     @Inject
     UserService userService;
 
-
     @Inject
     ObjectMapper objectMapper;
 
     @Inject
     SecurityService securityService;
 
-
     @Inject
     SecurityIdentity securityIdentity;
+
+    @Inject
+    UserDtoMapper userDtoMapper;
 
 
     @Override
@@ -48,9 +50,22 @@ public class OrganizationServiceImpl implements OrganizationService{
     @Transactional
     public Uni<Long> createOrganization(OrganizationCreateDTO organizationDto) {
        return createOwner(organizationDto)
-               .flatMap(owner -> doCreateOrganization(owner, organizationDto));
+               .flatMap(owner ->
+                   doCreateOrganization(owner, organizationDto)
+                    .map(orgId -> addOrgIdToUser(owner, orgId)))
+               .map(owner -> {
+                   userService.addUserToOrganization(owner);
+                   return owner.organizationId;
+               });
     }
 
+
+
+    private UserDto addOrgIdToUser(UserDto owner, Long orgId) {
+        var ownerClone = userDtoMapper.clone(owner);
+        ownerClone.setOrganizationId(orgId);
+        return ownerClone;
+    }
 
 
     @Override
@@ -100,9 +115,11 @@ public class OrganizationServiceImpl implements OrganizationService{
             var ownerExtraDetails = objectMapper.writeValueAsString(ofNullable(owner.extraDetails).orElse(emptyMap()));
             var org = new Organization();
             org.setName(organizationDto.name);
-            org.setOwnerId(owner.email);
+            org.setOwnerId(owner.id);
             org.setOwnerData(ownerExtraDetails);
-            return org.persistAndFlush().chain(() -> Uni.createFrom().item(org.getId()));
+            return org
+                    .persistAndFlush()
+                    .chain(() -> Uni.createFrom().item(org.getId()));
         } catch (Throwable e) {
             LOG.error(e,e);
             return Uni.createFrom().failure(e);

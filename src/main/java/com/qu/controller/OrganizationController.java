@@ -29,8 +29,8 @@ public class OrganizationController {
 
 
     @POST
-    @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
     public Uni<Long> createOrganization(OrganizationCreateDTO orgDto){
         return orgService.createOrganization(orgDto);
     }

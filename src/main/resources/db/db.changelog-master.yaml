@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - includeAll:
+      path: sql_change_logs
+      relativeToChangelogFile : true

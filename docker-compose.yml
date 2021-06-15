@@ -1,0 +1,81 @@
+version: "3.9"
+networks:
+  backend:
+  frontend:
+services:
+  database:
+    image: "postgres"
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U quarkus" ]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+    networks:
+      - backend
+    volumes:
+      - "/home/ahmed/qu/dev:/var/lib/postgresql/data"
+  keycloak:
+    image: "quay.io/keycloak/keycloak:13.0.1"
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      DB_VENDOR: postgres
+      DB_DATABASE: postgres
+      DB_ADDR: database
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KEYCLOAK_IMPORT: /tmp/qu-realm.json
+    volumes:
+      - "./qu-realm.json:/tmp/qu-realm.json"
+    healthcheck:
+      interval: 30s
+      timeout: 30s
+      start-period: 60s
+      retries: 3
+      test: [ "CMD-SHELL", "curl --fail http://localhost:8080/auth/realms/qu" ]
+  qu:
+    build:
+      context: .
+      dockerfile: "Dockerfile.jvm.dev"
+#      cache_from:
+#        - registry.access.redhat.com/ubi8/ubi-minimal:8.3
+    image: qu/qu
+    ports:
+      - "8180:8180"
+      - "5005:5005"
+    environment:
+      QUARKUS_HTTP_PORT: 8180
+      QUARKUS_DATASOURCE_JDBC_URL: "jdbc:postgresql://database:5432/postgres"
+      QUARKUS_OIDC_AUTH_SERVER_URL: "http://keycloak:8080/auth/realms/qu"
+      QUARKUS_DATASOURCE_REACTIVE_URL: "vertx-reactive:postgresql://database/postgres"
+      JAVA_ENABLE_DEBUG: "true"
+      QUARKUS_PROFILE: "dev"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      #this is a development enviroment, so , we add the application files at run time via volumes
+      #in production images, we probably should include them in the image during build
+      - "./scripts/wait-for-it.sh:/deployments/wait-for-it.sh"    #wrapper that waits for keycloak to startup
+      - "./build/quarkus-app/quarkus-run.jar:/deployments/app.jar"
+      - "./build/quarkus-app/lib:/deployments/lib"
+      - "./build/quarkus-app/quarkus:/deployments/quarkus"
+      - "./build/quarkus-app/app:/deployments/app"
+      - "./build/tmp:/tmp"    # for saving logs
+    entrypoint: ["/deployments/wait-for-it.sh", "keycloak:8080", "--", "/deployments/run-java.sh"]
+    networks:
+      - backend
+      - frontend

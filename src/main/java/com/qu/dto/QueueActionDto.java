@@ -6,7 +6,6 @@ import com.qu.commons.enums.QueueActions;
 
 import java.time.ZonedDateTime;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class QueueActionDto {
     public QueueActions action;
     public ZonedDateTime actionTime;

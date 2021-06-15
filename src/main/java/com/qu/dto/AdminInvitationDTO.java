@@ -1,5 +1,8 @@
 package com.qu.dto;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Set;

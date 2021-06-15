@@ -12,6 +12,7 @@ public enum Errors {
     E$USR$00002("Passwords didn't match!"),
     E$USR$00003("Invalid invitation token!"),
     E$USR$00004("Failed to parse JWT token!"),
+    E$USR$00005("Failed to perform operation on keycloak server!"),
 
     E$QUE$00001("Failed to create Queue type! cause: %s"),
     E$QUE$00002("Queue type doesn't exists!"),

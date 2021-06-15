@@ -1,5 +1,7 @@
 package com.qu.dto;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.smallrye.mutiny.Multi;
 
 import java.util.List;

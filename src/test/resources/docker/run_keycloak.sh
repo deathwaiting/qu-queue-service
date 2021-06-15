@@ -1,0 +1,4 @@
+sudo docker run -p 8180:8080 -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -e KEYCLOAK_IMPORT=/tmp/qu-realm.json -v ./qu-realm.json:/tmp/qu-realm.json quay.io/keycloak/keycloak:13.0.1
+#sudo docker run -p 8180:8080 -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -e KEYCLOAK_IMPORT=/tmp/qu-realm.json --mount type=volume,src=./qu-realm.json,target=/tmp/qu-realm.json quay.io/keycloak/keycloak:13.0.1
+#sudo docker run -p 8180:8080 -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin -e KEYCLOAK_IMPORT=./qu-realm.json  quay.io/keycloak/keycloak:13.0.1
+#sudo docker run -p 8180:8080 -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=admin quay.io/keycloak/keycloak:13.0.1

@@ -7,7 +7,6 @@ import lombok.Data;
 
 import java.util.Map;
 
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class QueueEventDto {
     public QueueEventPhase type;
     public String eventHandlerName;

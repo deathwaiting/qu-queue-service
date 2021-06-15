@@ -1,5 +1,6 @@
---liquibase fromatted sql
---changeset ahmed:20210127-1 splitStatement:true endDelimiter:;
+--liquibase formatted sql
+
+--changeset galal:init dbms:postgresql splitStatements:false failOnError:false
 create table organization(
     id bigserial primary key,
     owner_id text not null,
