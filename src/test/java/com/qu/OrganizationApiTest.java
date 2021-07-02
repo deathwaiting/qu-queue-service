@@ -3,17 +3,24 @@ package com.qu;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qu.dto.AdminInvitationCreateResponse;
 import com.qu.dto.AdminInvitationDTO;
+import com.qu.dto.UserCreationDto;
 import com.qu.persistence.entities.Organization;
+import com.qu.services.KeycloakService;
 import com.qu.test.dto.AdminInvitationRow;
 import com.qu.test.utils.DaoUtil;
 import com.qu.test.utils.Sql;
 import io.quarkus.mailer.MockMailbox;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.common.mapper.TypeRef;
 import io.smallrye.common.annotation.Blocking;
 import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.mockito.Mockito;
 
 import javax.inject.Inject;
 import java.time.ZonedDateTime;
@@ -23,6 +30,7 @@ import java.util.Set;
 
 import static com.qu.commons.constants.Roles.QUEUE_ADMIN;
 import static com.qu.commons.constants.Urls.ADMIN_INVITATION_FORM;
+import static com.qu.commons.enums.UserGroup.OWNER;
 import static com.qu.test.utils.Sql.ExecutionPhase.AFTER_TEST_METHOD;
 import static com.qu.test.utils.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static com.qu.test.utils.TestUtils.readTestResourceAsString;
@@ -35,9 +43,12 @@ import static org.apache.http.entity.ContentType.APPLICATION_JSON;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 
 @QuarkusTest
 @Blocking       //we need this to run jdbi with jdbc database connection for some reason
+//@QuarkusTestResource(OidcWiremockTestResource.class)
 public class OrganizationApiTest {
 
     @Inject
@@ -49,14 +60,30 @@ public class OrganizationApiTest {
     @Inject
     MockMailbox mailbox;
 
+    @InjectMock
+    KeycloakService keycloakService;
+
 
     static String jwt = readTestResourceAsString("keys/owner.jwt");
-
 
 
     @BeforeEach
     void init() {
         mailbox.clear();
+        mockKeycloakService();
+    }
+
+
+    private void mockKeycloakService() {
+        Mockito.when(keycloakService.createKeycloakUser(any(), any()))
+                .thenReturn("MOCKED_USER_ID");
+        Mockito.when(keycloakService.createOrgRole(any()))
+                .thenAnswer(an -> {
+                    var orgRoleName = "ORG_"+ an.getArgument(0, Long.class);
+                    var orgRole = new RoleRepresentation();
+                    orgRole.setName(orgRoleName);
+                    return orgRole; });
+        Mockito.doNothing().when(keycloakService).addRolesToKeycloakUser(Mockito.anyList(), any());
     }
 
 
@@ -74,7 +101,7 @@ public class OrganizationApiTest {
                 .add("payment_token", paymentToken)
                 .build()
                 .toString();
-        Long id =
+        var id =
             given()
             .when()
             .body(request)
@@ -83,9 +110,9 @@ public class OrganizationApiTest {
             .then()
             .statusCode(200)
             .body(notNullValue())
-            .extract().body().as(Long.class);
+            .extract().body().asString();
 
-        var org = dao.getSingleRow("select * from organization where id = :id", Organization.class, Map.of("id", id));
+        var org = dao.getSingleRow("select * from organization where id = :id", Organization.class, Map.of("id", Long.parseLong(id)));
 
         assertNotNull(email, org.getOwnerId());
         assertEquals(name, org.getName());

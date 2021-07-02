@@ -1,17 +1,36 @@
 {
-  "iss": "DinoChiesa.github.io",
-  "sub": "ming",
-  "aud": "anna",
-  "iat": 1612110856,
-  "exp": 2612211456,
-  "alpha": [
-    "6kpheyn74hvc8swiyndcs",
-    false
-  ],
-  "name": "fakedmin",
-  "email": "admin@fake.com",
-  "groups": [
-    "ROLE_QUEUE_ADMIN"
-  ],
-  "organizationId": 8888
+  "exp": 7625243328,
+  "iat": 1625243028,
+  "jti": "64d6e88f-513e-4ead-9d34-f9684f501ea5",
+  "iss": "http://localhost:8080/auth/realms/qu",
+  "aud": "account",
+  "sub": "7f1ccd79-4888-4d2c-8e53-aaf3d17b8448",
+  "typ": "Bearer",
+  "azp": "backend-service",
+  "session_state": "dbb260d6-4966-430c-9520-337d54bbe6f4",
+  "acr": "1",
+  "realm_access": {
+    "roles": [
+      "ORG_8888",
+      "default-roles-qu",
+      "offline_access",
+      "uma_authorization",
+      "ROLE_QUEUE_ADMIN"
+    ]
+  },
+  "resource_access": {
+    "account": {
+      "roles": [
+        "manage-account",
+        "manage-account-links",
+        "view-profile"
+      ]
+    }
+  },
+  "scope": "profile email",
+  "email_verified": false,
+  "name": "ee",
+  "preferred_username": "m7r_owner@fake.com",
+  "given_name": "ee",
+  "email": "m7r_owner@fake.com"
 }

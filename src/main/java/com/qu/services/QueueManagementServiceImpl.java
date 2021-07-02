@@ -745,7 +745,7 @@ public class QueueManagementServiceImpl implements QueueManagementService{
     }
 
 
-    private Queue createQueueEntity(QueueDto queue, QueueType type) {
+    private Queue  createQueueEntity(QueueDto queue, QueueType type) {
         var endTime = queue.endTime.withZoneSameInstant(UTC).toLocalDateTime();
         var startTime = queue.startTime.withZoneSameInstant(UTC).toLocalDateTime();
         var autoAccept = ofNullable(queue.autoAcceptEnabled).orElse(type.getDefaultAutoAcceptEnabled());

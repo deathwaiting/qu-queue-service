@@ -11,6 +11,7 @@ import org.jboss.logmanager.LogManager;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.JsonNumber;
+import javax.json.JsonObject;
 import javax.json.JsonString;
 import java.util.Map;
 import java.util.Objects;
@@ -19,7 +20,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.qu.exceptions.Errors.*;
-import static com.qu.services.UserService.ORG_ROLE_PREFIX;
+import static com.qu.services.KeycloakService.ORG_ROLE_PREFIX;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_ACCEPTABLE;
 import static java.util.Optional.ofNullable;
@@ -41,10 +42,10 @@ public class SecurityServiceImpl implements SecurityService{
     @Override
     public Optional<Long> getUserOrganizationOptional() {
         return ofNullable(jwt)
-                .map(j -> j.<JsonString>getClaim(REALM_ACCESS_CLAIM))
+                .map(j -> j.<JsonObject>getClaim(REALM_ACCESS_CLAIM))
                 .map(claim -> claim.asJsonObject().getJsonArray("roles"))
                 .flatMap(this::getOrganizationRole)
-                .map(roleName -> roleName.replace(ORG_ROLE_PREFIX+"_", ""))
+                .map(roleName -> roleName.replace(ORG_ROLE_PREFIX, ""))
                 .flatMap(Utils::parseLongSafely);
     }
 

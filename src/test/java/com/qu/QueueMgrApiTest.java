@@ -439,7 +439,7 @@ public class QueueMgrApiTest {
                     .statusCode(200);
 
         var requestRow = assertRequestCreated(id, clientDetails, false);
-        assertEquals(clientId, requestRow.clientId);
+        assertTrue(requestRow.clientId.startsWith("client-qu[99934]"));
     }
 
 
@@ -706,7 +706,7 @@ public class QueueMgrApiTest {
         assertNotNull(pick.pickTime);
         assertNull(pick.skipTime);
         assertNull(pick.skipReason);
-        assertEquals("ming", pick.serverId);
+        assertEquals("7f1ccd79-4888-4d2c-8e53-aaf3d17b8448", pick.serverId);
         assertNotNull(pick.serverDetails);
         return pick;
     }
@@ -724,7 +724,7 @@ public class QueueMgrApiTest {
         assertNull(skip.pickTime);
         assertNotNull(skip.skipTime);
         assertEquals(reason, skip.skipReason);
-        assertEquals("ming", skip.serverId);
+        assertEquals("7f1ccd79-4888-4d2c-8e53-aaf3d17b8448", skip.serverId);
         assertNotNull(skip.serverDetails);
         return skip;
     }
@@ -882,7 +882,7 @@ public class QueueMgrApiTest {
     private String createTurnRequestRequestBody(String clientId, JsonObject clientDetails) {
         var jsonBuilder =
                 createObjectBuilder()
-                .add("client_details", clientDetails);
+                .add("clientDetails", clientDetails);
         if(nonNull(clientId)) jsonBuilder.add("client_id", clientId);
         return jsonBuilder.build().toString();
     }
@@ -905,11 +905,11 @@ public class QueueMgrApiTest {
     private String createQueueRequest() {
         return createObjectBuilder()
                 .add("autoAcceptEnabled", true)
-                .add("queue_type_id", 88888)
+                .add("queueTypeId", 88888)
                 .add("holdEnabled", true)
-                .add("max_size", 10)
-                .add("start_time", "1994-11-05T08:15:30+02:00")
-                .add("end_time", "1994-11-05T13:15:30+02:00")
+                .add("maxSize", 10)
+                .add("startTime", "1994-11-05T08:15:30+02:00")
+                .add("endTime", "1994-11-05T13:15:30+02:00")
                 .build()
                 .toString();
     }
@@ -918,8 +918,8 @@ public class QueueMgrApiTest {
     private String createQueueTypeCreationRequest(String name) {
         var handler =
                 createObjectBuilder()
-                    .add("event_handler_name", DUMMY_HANDLER)
-                    .add("common_params", createObjectBuilder().add("pokemon", "picktchu").build())
+                    .add("eventHandlerName", DUMMY_HANDLER)
+                    .add("commonParams", createObjectBuilder().add("pokemon", "picktchu").build())
                     .add("type", ENQUEUE_ACTION.name())
                 .build();
         var eventHandlers =
@@ -928,8 +928,8 @@ public class QueueMgrApiTest {
                         .build();
         return  createObjectBuilder()
                 .add("name", name)
-                .add("default_max_size", 50)
-                        .add("event_handlers", eventHandlers)
+                .add("defaultMaxSize", 50)
+                        .add("eventHandlers", eventHandlers)
                 .build()
                 .toString();
     }

@@ -10,8 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
-    public static final String REALM = "qu";
-    public static final String ORG_ROLE_PREFIX = "ORG_";
+
 
     Uni<UserDto> createOrganizationOwner(UserCreationDto owner);
     List<UserGroup> getUserGroups();

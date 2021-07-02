@@ -44,6 +44,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:1.15.1")
     testImplementation("org.jdbi:jdbi3-core:3.1.0")
     testImplementation("com.tngtech.keycloakmock:mock:0.6.0");
+    testImplementation("io.quarkus:quarkus-test-oidc-server")
 }
 
 group = "com.qu"
